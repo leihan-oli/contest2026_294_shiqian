@@ -167,6 +167,22 @@ if(CONFIG_STM32_WWDG)
   list(APPEND SRCS stm32n6_wwdg.c)
 endif()
 
+if(CONFIG_STM32_SPI1 OR CONFIG_STM32_SPI2)
+  list(APPEND SRCS stm32n6_spi.c)
+endif()
+
+if(CONFIG_STM32_EMAC)
+  list(APPEND SRCS stm32n6_ethernet.c)
+endif()
+
+if(CONFIG_STM32_FDCAN1)
+  list(APPEND SRCS stm32n6_fdcan.c)
+endif()
+
+if(CONFIG_STM32_OTG)
+  list(APPEND SRCS stm32n6_otg.c)
+endif()
+
 target_sources(arch PRIVATE ${SRCS})
 
 # NOTE: this driver stays on the image-wide -Os on purpose.
