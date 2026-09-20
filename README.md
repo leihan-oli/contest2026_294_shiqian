@@ -102,6 +102,11 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 > 上述 11 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
 > 打开对应 `CONFIG_STM32_*` 即会纳入编译（SPI / CAN / 以太网 / USB 四个驱动已按 `eye` 配置同款编译选项**逐文件编译通过**；以太网驱动有 2 条 unused-function 警告）；但**除 XSPI/启动介质外，均不属于本产品路径，也未做过实物级验证**。
 > 若需扩展到这些外设，请按 `docs/openvela-porting.md` 的流程补一次上板实测与记录。
+>
+> **整包构建实测**（以 `npu` 配置为基线）：**SPI / CAN 打开后可完整构建并链接**（产出 `nuttx.bin`）；
+> **以太网 / USB 目前只能编译、不能出固件** —— 使能 `CONFIG_NET` / `CONFIG_USBDEV` 后 NuttX 要求 arch 提供
+> `arm_netinitialize()` / `arm_usbinitialize()`，本端口尚未实现（MAC 驱动也缺少实例化入口）。
+> 另：不带模型的配置（如 `nsh`）需先选中一个 `CONFIG_AI_ATON_MODEL_*` 才能链接（`aton_model.c` 仅在选中模型时参与编译）。
 
 ## 端侧 AI 能力
 
@@ -243,7 +248,8 @@ nsh> eye_cam xspi dump       # HyperRAM / XSPI 状态
 | 界面显示与摄像头预览 | 分时互斥 | 只有一块 750 KB framebuffer（为内部 RAM 让路），预览与 LVGL 界面不并存 |
 | 眼动识别泛化性 | 自采数据集 | 991 张五分类数据集上 float 991/991、int8 990/991；换人 / 换光照的系统性评测未覆盖 |
 | 曝光与增益 | 参数化固定值 | 与裸机金标准一致的固定参数，未做自适应（AE / AGC） |
-| USB 主机、以太网、CAN | 源码随端口提供、**无配置启用** | 未接外设实测（构建接线已齐备，见「外设与驱动适配 · 随端口提供」状态列） |
+| USB 主机、以太网 | 源码随端口提供、**无配置启用** | 未接外设实测；整包链接还需补 `arm_netinitialize()` / `arm_usbinitialize()`（见「随端口提供」注） |
+| CAN / SPI | 源码随端口提供、**无配置启用** | 未接收发器 / 从设备；打开对应 CONFIG 后可完整构建（已实测） |
 | 原厂例程覆盖 | 部分纳入 | 所需外设未接入或未适配的例程（OLED / FMC 屏 / 外接传感器 / SD-NAND / JPEG / SPDIF 等）未纳入本仓库，见「适配规模」 |
 
 ## AI Coding 日志
