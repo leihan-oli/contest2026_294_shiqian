@@ -1,0 +1,31 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_IMX335_TUNE
+	tristate "IMX335 exposure/gain tuning helper"
+	default n
+	depends on STM32_IMX335
+	---help---
+		NSH utility used during image dataset capture bring-up.  It
+		programs the IMX335 exposure (SHR0), frame length (VMAX) and
+		analog gain registers directly, so that capture brightness can
+		be tuned on the target instead of re-flashing for every
+		register experiment.
+
+if EXAMPLES_IMX335_TUNE
+
+config EXAMPLES_IMX335_TUNE_PROGNAME
+	string "Program name"
+	default "imx335_tune"
+
+config EXAMPLES_IMX335_TUNE_PRIORITY
+	int "imx335_tune task priority"
+	default 100
+
+config EXAMPLES_IMX335_TUNE_STACKSIZE
+	int "imx335_tune stack size"
+	default 4096
+
+endif

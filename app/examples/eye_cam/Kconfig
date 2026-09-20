@@ -1,0 +1,49 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_EYE_CAM
+        tristate "Blink classifier on the NPU, annotated on the LCD"
+        default n
+        depends on STM32N6_VIDEO
+        ---help---
+                Runs the trained blink model continuously: the eye ROI is cut
+                out of the camera frame, quantised to the model's int8 tensor
+                and handed to the ATON NPU, and the verdict comes back as a
+                coloured box on the panel.
+
+                Everything on the path - the ROI rectangle (x=235 y=155
+                300x145), the RGB565 expansion, the PIL-compatible bilinear
+                resize, the planar NCHW byte order and the quantisation
+                parameters - is taken from the training pipeline on purpose:
+                each of them fails silently, so a mismatch shows up as an
+                accuracy drop rather than as an error.  See the file header
+                for the details.
+
+                Usage:  eye_cam [iterations] [hold_ms]
+                        (no iterations = run until Ctrl-C)
+
+                        eye_cam capture <label> [count]
+                        Writes the crop the classifier is given to
+                        <mountpoint>/eye_ds as <label>_NNNN.bmp, one file
+                        per frame, plus a meta.txt line carrying that
+                        frame's crop and detection geometry.  Stops after
+                        count frames (default 220) so every class is a
+                        separate run and a batch can be redone on its own.
+
+if EXAMPLES_EYE_CAM
+
+config EXAMPLES_EYE_CAM_PROGNAME
+        string "Program name"
+        default "eye_cam"
+
+config EXAMPLES_EYE_CAM_PRIORITY
+        int "eye_cam task priority"
+        default 100
+
+config EXAMPLES_EYE_CAM_STACKSIZE
+        int "eye_cam stack size"
+        default 8192
+
+endif

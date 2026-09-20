@@ -1,0 +1,125 @@
+diff --git a/audioutils/speexdsp/CMakeLists.txt b/audioutils/speexdsp/CMakeLists.txt
+index 6d5ef4987..ea1fa50aa 100644
+--- a/audioutils/speexdsp/CMakeLists.txt
++++ b/audioutils/speexdsp/CMakeLists.txt
+@@ -21,7 +21,7 @@ if(CONFIG_AUDIOUTILS_SPEEXDSP)
+ 
+   if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/speexdsp)
+     if(NOT SPEEXDSP_URL)
+-      set(SPEEXDSP_URL "https://github.com/xiph/speexdsp/archive/refs/tags")
++      set(SPEEXDSP_URL "file:///home/leihann/openvela/local_src/speexdsp")
+     endif()
+ 
+     if(NOT SPEEXDSP_VERSION)
+@@ -31,6 +31,7 @@ if(CONFIG_AUDIOUTILS_SPEEXDSP)
+     FetchContent_Declare(
+       speexdsp
+       URL "${SPEEXDSP_URL}/${SPEEXDSP_VERSION}.zip"
++      URL_HASH SHA256=be16e16bcbc26875916a8eedd3b5b46cb93bef4714c49895a28f8c86b81437cf
+           SOURCE_DIR
+           ${CMAKE_CURRENT_LIST_DIR}/speexdsp
+           BINARY_DIR
+diff --git a/examples/lvgldemo/lvgldemo.c b/examples/lvgldemo/lvgldemo.c
+index 6c8c102ea..3718df744 100644
+--- a/examples/lvgldemo/lvgldemo.c
++++ b/examples/lvgldemo/lvgldemo.c
+@@ -24,6 +24,8 @@
+ 
+ #include <nuttx/config.h>
+ #include <unistd.h>
++#include <time.h>
++#include <syslog.h>
+ #include <sys/boardctl.h>
+ 
+ #include <lvgl/lvgl.h>
+@@ -160,19 +162,80 @@ int main(int argc, FAR char *argv[])
+       goto demo_end;
+     }
+ 
++  /* Tear-free smoothness: drop all continuous demo animations (gauges,
++   * progress bars, charts...).  On a 600 MHz Cortex-M55 with a single
++   * PARTIAL framebuffer, lv_demo_widgets keeps LVGL rendering 60 fps of
++   * auto-animation, so during an interactive drag the renderer can't keep
++   * up with the LTDC scanline and the screen refreshes in visible blocks.
++   * Removing the animations frees the CPU for the actual drag rendering.
++   */
++
++  lv_anim_delete_all();
++
+ #ifdef CONFIG_LV_USE_NUTTX_LIBUV
+   lv_nuttx_uv_loop(&ui_loop, &result);
+ #else
+-  while (1)
+-    {
+-      uint32_t idle;
+-      idle = lv_timer_handler();
+-
+-      /* Minimum sleep of 1ms */
+-
+-      idle = idle ? idle : 1;
+-      usleep(idle * 1000);
+-    }
++  /* DWT cycle counter for high-resolution timing (systick is only 10ms).
++   * DEMCR.TRCENA + DWT.CYCCNTENA, then read DWT->CYCCNT. */
++
++  {
++    volatile uint32_t *demcr = (volatile uint32_t *)0xe000edfcu;
++    volatile uint32_t *dwt_ctrl = (volatile uint32_t *)0xe0001000u;
++    volatile uint32_t *dwt_cnt = (volatile uint32_t *)0xe0001004u;
++
++    *demcr |= (1u << 24);
++    *dwt_cnt = 0;
++    *dwt_ctrl |= 1u;
++
++    while (1)
++      {
++        uint32_t t0 = *dwt_cnt;
++        uint32_t idle = lv_timer_handler();
++        uint32_t dt = *dwt_cnt - t0;   /* handler wall time in CPU cycles */
++
++        /* One-per-second diagnostics: timer-handler rate, average idle and
++         * the handler wall time (avg/max, ms @ 600MHz).  While dragging a
++         * full-screen refresh this shows up as a 200-500ms handler; the
++         * putarea diagnostics on /dev/lcd0 show how much of that is the
++         * flush itself vs. LVGL rendering. */
++
++        static uint32_t diag_handlers = 0;
++        static uint32_t diag_idle_sum  = 0;
++        static uint32_t diag_dt_sum    = 0;
++        static uint32_t diag_dt_max    = 0;
++        static uint32_t diag_last_sec  = 0;
++        uint32_t now = (uint32_t)(clock() / CLOCKS_PER_SEC);
++
++        diag_handlers++;
++        diag_idle_sum += idle;
++        diag_dt_sum += dt;
++        if (dt > diag_dt_max)
++          {
++            diag_dt_max = dt;
++          }
++
++        if (now != diag_last_sec)
++          {
++            syslog(LOG_INFO,
++                   "lvgldemo: %lu handler/s, avg_idle=%lu ms, "
++                   "handler_avg=%lu ms, handler_max=%lu ms\n",
++                   (unsigned long)diag_handlers,
++                   (unsigned long)(diag_idle_sum / diag_handlers),
++                   (unsigned long)(diag_dt_sum / diag_handlers / 600000),
++                   (unsigned long)(diag_dt_max / 600000));
++            diag_handlers = 0;
++            diag_idle_sum = 0;
++            diag_dt_sum = 0;
++            diag_dt_max = 0;
++            diag_last_sec = now;
++          }
++
++        /* Minimum sleep of 1ms */
++
++        idle = idle ? idle : 1;
++        usleep(idle * 1000);
++      }
++  }
+ #endif
+ 
+ demo_end:

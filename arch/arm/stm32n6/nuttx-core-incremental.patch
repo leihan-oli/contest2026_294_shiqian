@@ -1,0 +1,443 @@
+diff --git a/Kconfig b/Kconfig
+index 743c79e4076..477c4c7e1c9 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -2924,6 +2924,7 @@ source "binfmt/Kconfig"
+ endmenu
+ 
+ menu "Library Routines"
++source "libs/ai_aton/Kconfig"
+ source "libs/libc/Kconfig"
+ source "libs/libm/Kconfig"
+ source "libs/libxx/Kconfig"
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 3c5b394b867..e2c1a91d985 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -551,6 +551,19 @@ config ARCH_CHIP_STM32U5
+ 	---help---
+ 		STMicro STM32 U5 architectures (ARM Cortex-M33).
+ 
++config ARCH_CHIP_STM32N6
++	bool "STMicro STM32 N6"
++	select ARCH_CORTEXM55
++	select ARCH_HAVE_MPU
++	select ARCH_HAVE_FPU
++	select ARM_HAVE_MVE
++	select ARMV8M_HAVE_ICACHE
++	select ARMV8M_HAVE_DCACHE
++	select ARMV8M_HAVE_ITCM
++	select ARMV8M_HAVE_DTCM
++	---help---
++		STMicro STM32N6 architectures (ARM Cortex-M55).
++
+ config ARCH_CHIP_STM32WB
+ 	bool "STMicro STM32 WB"
+ 	select ARCH_CORTEXM4
+@@ -1135,6 +1148,7 @@ config ARCH_CHIP
+ 	default "stm32h5"	if ARCH_CHIP_STM32H5
+ 	default "stm32l5"	if ARCH_CHIP_STM32L5
+ 	default "stm32u5"	if ARCH_CHIP_STM32U5
++	default "stm32n6"	if ARCH_CHIP_STM32N6
+ 	default "stm32wb"	if ARCH_CHIP_STM32WB
+ 	default "stm32wl5"	if ARCH_CHIP_STM32WL5
+ 	default "str71x"	if ARCH_CHIP_STR71X
+@@ -1631,6 +1645,9 @@ endif
+ if ARCH_CHIP_STM32U5
+ source "arch/arm/src/stm32u5/Kconfig"
+ endif
++if ARCH_CHIP_STM32N6
++source "arch/arm/src/stm32n6/Kconfig"
++endif
+ if ARCH_CHIP_STM32WB
+ source "arch/arm/src/stm32wb/Kconfig"
+ endif
+diff --git a/arch/arm/src/arm_m/arm_busfault.c b/arch/arm/src/arm_m/arm_busfault.c
+index e8e188d8f3e..3fe13e91ef6 100644
+--- a/arch/arm/src/arm_m/arm_busfault.c
++++ b/arch/arm/src/arm_m/arm_busfault.c
+@@ -109,6 +109,28 @@ int arm_busfault(int irq, void *context, void *arg)
+     }
+ #endif
+ 
++#ifdef CONFIG_DEBUG_HARDFAULT_ALERT
++  /* Print the hardware exception frame before handing over to the panic
++   * machinery.  _assert() replaces the register set it is given with its own
++   * saved context (see assert.c: up_saveusercontext(g_last_regs)), so the
++   * register dump printed by the panic path describes the assertion code
++   * itself instead of the instruction that faulted.  Here `context` is still
++   * the real frame, so this is the only chance to see the faulting PC.
++   */
++
++  {
++    FAR uint32_t *frame = (FAR uint32_t *)context;
++
++    _alert("Fault frame: R0=%08" PRIx32 " R1=%08" PRIx32 " R2=%08" PRIx32
++           " R3=%08" PRIx32 " R12=%08" PRIx32 "\n",
++           frame[REG_R0], frame[REG_R1], frame[REG_R2], frame[REG_R3],
++           frame[REG_R12]);
++    _alert("Fault frame: SP=%08" PRIx32 " LR=%08" PRIx32 " PC=%08" PRIx32
++           " xPSR=%08" PRIx32 "\n",
++           frame[REG_SP], frame[REG_LR], frame[REG_PC], frame[REG_XPSR]);
++  }
++#endif
++
+   up_irq_save();
+   PANIC_WITH_REGS("panic", context);
+   return OK;
+diff --git a/arch/arm/src/arm_m/arm_hardfault.c b/arch/arm/src/arm_m/arm_hardfault.c
+index 3ae38a95917..2424d66644a 100644
+--- a/arch/arm/src/arm_m/arm_hardfault.c
++++ b/arch/arm/src/arm_m/arm_hardfault.c
+@@ -182,6 +182,28 @@ int arm_hardfault(int irq, void *context, void *arg)
+     }
+ #endif
+ 
++#ifdef CONFIG_DEBUG_HARDFAULT_ALERT
++  /* Print the hardware exception frame before handing over to the panic
++   * machinery.  _assert() replaces the register set it is given with its own
++   * saved context (see assert.c: up_saveusercontext(g_last_regs)), so the
++   * register dump printed by the panic path describes the assertion code
++   * itself instead of the instruction that faulted.  Here `context` is still
++   * the real frame, so this is the only chance to see the faulting PC.
++   */
++
++  {
++    FAR uint32_t *frame = (FAR uint32_t *)context;
++
++    _alert("Fault frame: R0=%08" PRIx32 " R1=%08" PRIx32 " R2=%08" PRIx32
++           " R3=%08" PRIx32 " R12=%08" PRIx32 "\n",
++           frame[REG_R0], frame[REG_R1], frame[REG_R2], frame[REG_R3],
++           frame[REG_R12]);
++    _alert("Fault frame: SP=%08" PRIx32 " LR=%08" PRIx32 " PC=%08" PRIx32
++           " xPSR=%08" PRIx32 "\n",
++           frame[REG_SP], frame[REG_LR], frame[REG_PC], frame[REG_XPSR]);
++  }
++#endif
++
+   up_irq_save();
+   PANIC_WITH_REGS("panic", context);
+   return OK;
+diff --git a/arch/arm/src/arm_m/arm_memfault.c b/arch/arm/src/arm_m/arm_memfault.c
+index e7e15311d22..e49f8f01dfb 100644
+--- a/arch/arm/src/arm_m/arm_memfault.c
++++ b/arch/arm/src/arm_m/arm_memfault.c
+@@ -132,6 +132,28 @@ int arm_memfault(int irq, void *context, void *arg)
+       return OK;
+     }
+ 
++#ifdef CONFIG_DEBUG_HARDFAULT_ALERT
++  /* Print the hardware exception frame before handing over to the panic
++   * machinery.  _assert() replaces the register set it is given with its own
++   * saved context (see assert.c: up_saveusercontext(g_last_regs)), so the
++   * register dump printed by the panic path describes the assertion code
++   * itself instead of the instruction that faulted.  Here `context` is still
++   * the real frame, so this is the only chance to see the faulting PC.
++   */
++
++  {
++    FAR uint32_t *frame = (FAR uint32_t *)context;
++
++    _alert("Fault frame: R0=%08" PRIx32 " R1=%08" PRIx32 " R2=%08" PRIx32
++           " R3=%08" PRIx32 " R12=%08" PRIx32 "\n",
++           frame[REG_R0], frame[REG_R1], frame[REG_R2], frame[REG_R3],
++           frame[REG_R12]);
++    _alert("Fault frame: SP=%08" PRIx32 " LR=%08" PRIx32 " PC=%08" PRIx32
++           " xPSR=%08" PRIx32 "\n",
++           frame[REG_SP], frame[REG_LR], frame[REG_PC], frame[REG_XPSR]);
++  }
++#endif
++
+   up_irq_save();
+   PANIC_WITH_REGS("panic", context);
+   return OK; /* Won't get here */
+diff --git a/arch/arm/src/arm_m/arm_usagefault.c b/arch/arm/src/arm_m/arm_usagefault.c
+index a13874e3261..7c2565fc088 100644
+--- a/arch/arm/src/arm_m/arm_usagefault.c
++++ b/arch/arm/src/arm_m/arm_usagefault.c
+@@ -110,6 +110,28 @@ int arm_usagefault(int irq, void *context, void *arg)
+       ufalert("\tDivide by zero\n");
+     }
+ 
++#ifdef CONFIG_DEBUG_HARDFAULT_ALERT
++  /* Print the hardware exception frame before handing over to the panic
++   * machinery.  _assert() replaces the register set it is given with its own
++   * saved context (see assert.c: up_saveusercontext(g_last_regs)), so the
++   * register dump printed by the panic path describes the assertion code
++   * itself instead of the instruction that faulted.  Here `context` is still
++   * the real frame, so this is the only chance to see the faulting PC.
++   */
++
++  {
++    FAR uint32_t *frame = (FAR uint32_t *)context;
++
++    _alert("Fault frame: R0=%08" PRIx32 " R1=%08" PRIx32 " R2=%08" PRIx32
++           " R3=%08" PRIx32 " R12=%08" PRIx32 "\n",
++           frame[REG_R0], frame[REG_R1], frame[REG_R2], frame[REG_R3],
++           frame[REG_R12]);
++    _alert("Fault frame: SP=%08" PRIx32 " LR=%08" PRIx32 " PC=%08" PRIx32
++           " xPSR=%08" PRIx32 "\n",
++           frame[REG_SP], frame[REG_LR], frame[REG_PC], frame[REG_XPSR]);
++  }
++#endif
++
+   up_irq_save();
+   PANIC_WITH_REGS("panic", context);
+   return OK;
+diff --git a/arch/arm/src/arm_m/arm_vectors.c b/arch/arm/src/arm_m/arm_vectors.c
+index 1cb785c3fb4..6f2b1fedded 100644
+--- a/arch/arm/src/arm_m/arm_vectors.c
++++ b/arch/arm/src/arm_m/arm_vectors.c
+@@ -74,10 +74,30 @@ extern void __start(void);
+ 
+ static void start(void)
+ {
++#if defined(CONFIG_ARCH_CHIP_STM32N647X0)
++  /* DIAG v5: LED0 ON via the SECURE GPIOG BSRR alias (0x56021818,
++   * BR10=bit26).  MUST use the secure alias: the FSBL leaves the GPIO
++   * pins in their reset SECURE state (no ConfigPinAttributes call), and
++   * a write to the NS alias of a secure peripheral SecureFaults, which
++   * previously made the board look like the jump itself failed.  This is
++   * a pure "did the CPU reach start()" probe: if LED0 never lights, the
++   * FSBL->NuttX jump itself failed (CPU never reached start()). */
++  *(volatile uint32_t *)0x56021818UL = (1UL << 26);
++#endif
++
+   /* Set MSP & PSP to the value at reset */
+ 
+   arm_initialize_stack();
+ 
++#if defined(CONFIG_ARCH_CHIP_STM32N647X0)
++  /* DIAG v5: LED1 ON via the SECURE GPIOE BSRR alias (0x56021018,
++   * BR10=bit26) => arm_initialize_stack() returned without faulting.
++   *   LED0 ON + LED1 OFF -> arm_initialize_stack() faulted (hang).
++   *   LED0 ON + LED1 ON  -> start()+arm_initialize_stack() OK; the hang is
++   *     in __start()/__start_c(). */
++  *(volatile uint32_t *)0x56021018UL = (1UL << 26);
++#endif
++
+   /* Zero lr to mark the end of backtrace */
+ 
+   asm volatile ("mov lr, %0\n\t"
+diff --git a/arch/arm/src/armv8-m/arm_cache.c b/arch/arm/src/armv8-m/arm_cache.c
+index f6e26e78c68..4199e0e4de1 100644
+--- a/arch/arm/src/armv8-m/arm_cache.c
++++ b/arch/arm/src/armv8-m/arm_cache.c
+@@ -584,19 +584,11 @@ void up_disable_dcache(void)
+       uint32_t tmpways;
+     } locals;
+ 
+-  /* Disable the D-Cache */
+-
+-  locals.ccr = getreg32(NVIC_CFGCON);
+-  locals.ccr &= ~NVIC_CFGCON_DC;
+-  putreg32(locals.ccr, NVIC_CFGCON);
+-  UP_MB();
+-
+-  /* Clean and invalidate the local variable cache. */
+-
+-  up_flush_dcache((uintptr_t)&locals, (uintptr_t)&locals + sizeof(locals));
+-  UP_MB();
+-
+-  /* Get the characteristics of the D-Cache */
++  /* Get the characteristics of the D-Cache
++   *
++   * NOTE: the clean+invalidate below runs while the D-Cache is still
++   * ENABLED (see the note next to the disable at the end of this function).
++   */
+ 
+   locals.ccsidr = getreg32(NVIC_CCSIDR);
+   locals.sets   = CCSIDR_SETS(locals.ccsidr);          /* (Number of sets) - 1 */
+@@ -636,6 +628,32 @@ void up_disable_dcache(void)
+ 
+   UP_MB();
+ 
++  /* Clean and invalidate the local variable cache. */
++
++  up_flush_dcache((uintptr_t)&locals, (uintptr_t)&locals + sizeof(locals));
++  UP_MB();
++
++  /* Disable the D-Cache
++   *
++   * NOTE: this MUST be the last step of the sequence.  Cache maintenance
++   * operations are not guaranteed to be performed once the cache has been
++   * disabled, so flushing after the disable silently drops every value that
++   * was only held in the cache.
++   *
++   * Observed on STM32N6 (2026-09-11): stm32n6_sdmmc_initialize() calls
++   * up_disable_dcache() during boot.  With the old disable-first order the
++   * NuttX heap bookkeeping never reached SRAM and the very next malloc()
++   * (board_bringup -> register_blockdriver -> inode_alloc -> zalloc ->
++   * mm_malloc) asserted on an inconsistent free list.  The same dropped
++   * updates appeared later as random mm.h:354 assertions (cam_save, LVGL,
++   * task spawn).
++   */
++
++  locals.ccr = getreg32(NVIC_CFGCON);
++  locals.ccr &= ~NVIC_CFGCON_DC;
++  putreg32(locals.ccr, NVIC_CFGCON);
++  UP_MB();
++
+   l2cc_disable();
+ }
+ #endif /* CONFIG_ARMV8M_DCACHE */
+@@ -1118,6 +1136,7 @@ void up_flush_dcache_all(void)
+  ****************************************************************************/
+ 
+ #ifdef CONFIG_ARMV8M_DCACHE
++#  undef up_coherent_dcache
+ void up_coherent_dcache(uintptr_t addr, size_t len)
+ {
+   uintptr_t end;
+diff --git a/include/nuttx/aie/stm32n6_aton_aie.h b/include/nuttx/aie/stm32n6_aton_aie.h
+new file mode 100644
+index 00000000000..19d1fb789bb
+--- /dev/null
++++ b/include/nuttx/aie/stm32n6_aton_aie.h
+@@ -0,0 +1,146 @@
++/****************************************************************************
++ * include/nuttx/aie/stm32n6_aton_aie.h
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.  The
++ * ASF licenses this file to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance with the
++ * License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ *
++ ****************************************************************************/
++
++#ifndef __INCLUDE_NUTTX_AIE_STM32N6_ATON_AIE_H
++#define __INCLUDE_NUTTX_AIE_STM32N6_ATON_AIE_H
++
++/****************************************************************************
++ * Included Files
++ ****************************************************************************/
++
++#include <stdint.h>
++#include <stddef.h>
++#include <nuttx/aie/ai_engine.h>
++
++/****************************************************************************
++ * Public Types
++ ****************************************************************************/
++
++/* Model slots.  The ATON runtime binds to its model at build time, so a
++ * build either has one model (slot 0) or a pair (slot 0 plus the companion
++ * slot 1 - in the eye configuration, the classifier plus the face detector
++ * that localises it).  The values mirror enum aton_model_id in
++ * nuttx/libs/ai_aton/nuttx/aton_model.h; keep the two in sync.
++ *
++ * A build without the second model answers -ENODEV for slot 1.
++ */
++
++#define STM32N6_ATON_MODEL_PRIMARY   0
++#define STM32N6_ATON_MODEL_FACE      1
++#define STM32N6_ATON_MODEL_NMODELS   2
++
++/* Structure to pass STM32N6 ATON inference parameters through the AIE
++ * ioctl.  This mirrors the Ethos-U ethosu_aie_invoke_params pattern: the
++ * AIE upper-half passes a single opaque address, and the lower-half
++ * interprets it as a driver-specific parameter block.
++ */
++
++struct stm32n6_aton_invoke_params
++{
++  FAR const void *model;        /* ATON model (compiled-in C array) */
++  FAR const void *input;        /* Input tensor base address */
++  FAR void *output;             /* Output tensor base address */
++  size_t input_size;            /* Input tensor size in bytes */
++  size_t output_size;           /* Output tensor size in bytes */
++
++  /* Which slot to run.  The two models of an eye build share one input
++   * buffer (the driver reports its address through GET_STATUS), so the only
++   * thing that selects between them is this field.
++   */
++
++  uint32_t model_id;            /* STM32N6_ATON_MODEL_*, 0 when unset */
++
++  /* Filled in by the lower half (AIE_CMD_FEED_INPUT) */
++
++  int      result;              /* 0 on success, else a negated errno */
++  uint32_t usec;                /* Epoch loop duration in microseconds */
++  uint32_t runs;                /* Inferences of *this* slot since boot */
++  uint32_t events;              /* NPU epoch-complete events signalled */
++};
++
++/* STM32N6 ATON driver status (AIE_CMD_.. control, arg = pointer to this).
++ *
++ * model_id is an input field: the caller selects the slot it wants described
++ * and the lower half fills the rest.  Slot 0 is assumed when it is left at
++ * zero, which is what a caller written against the one-model driver expects.
++ */
++
++struct stm32n6_aton_status_s
++{
++  uint32_t model_id;            /* IN: STM32N6_ATON_MODEL_* */
++  FAR const char *name;         /* OUT: the slot's model name */
++  uint32_t input_size;          /* Model input tensor size in bytes */
++  uint32_t output_size;         /* Model output tensor size in bytes */
++  uint32_t input_addr;         /* Address the epoch program reads the input
++                                * from.  It was resolved once, when the program
++                                * was published, so this is where the caller
++                                * has to put the frame; filling any other
++                                * buffer feeds the engines nothing.  0 when
++                                * the model has no input tensor */
++  uint32_t output_addr;         /* Address of the output inside the NPU pool,
++                                 * 0 when the caller supplies the buffer */
++  uint32_t runs;                /* Inferences of this slot since boot */
++  uint32_t last_usec;           /* Duration of its last inference */
++  uint32_t events;              /* NPU epoch-complete events signalled */
++  int      last_result;         /* Result of its last inference */
++};
++
++/* Driver-specific control commands forwarded by the AIE upper half to the
++ * lower-half control() callback (values must not collide with AIE_CMD_*).
++ */
++
++#define STM32N6_ATON_CMD_GET_STATUS  0x100
++#define STM32N6_ATON_CMD_RUN         0x101
++
++/* Write a string to the console with polled, unbuffered output.  The string
++ * is formatted by the caller and passed as a pointer in the ioctl argument.
++ *
++ * This exists so diagnostics can be printed without going through the console
++ * driver (and its TX semaphore): if that path stalls, everything that prints
++ * through it blocks, while this keeps working.
++ */
++
++#define STM32N6_ATON_CMD_PUTS        0x102   /* arg = string pointer */
++
++/****************************************************************************
++ * Public Function Prototypes
++ ****************************************************************************/
++
++/****************************************************************************
++ * Name: stm32n6_aton_aie_initialize
++ *
++ * Description:
++ *   Initialize the STM32N6 Neural-ART NPU driver and register it with the
++ *   AI Engine upper half.  This function is called during board
++ *   initialization to set up the NPU hardware support.
++ *
++ * Input Parameters:
++ *   None
++ *
++ * Returned Value:
++ *   OK (0) on success; a negated errno value on failure.
++ *
++ ****************************************************************************/
++
++int stm32n6_aton_aie_initialize(void);
++
++#endif /* __INCLUDE_NUTTX_AIE_STM32N6_ATON_AIE_H */

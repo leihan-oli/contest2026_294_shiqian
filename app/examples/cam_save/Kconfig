@@ -1,0 +1,38 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_CAM_SAVE
+        tristate "Camera frame capture to TF card (dataset)"
+        default n
+        depends on STM32N6_VIDEO
+        ---help---
+                Capture camera frames (800x480 RGB565) from /dev/video0,
+                downscale to 96x96 grayscale and write BMP files to the
+                TF card FATFS mount point.  Use it to collect training
+                data on the real hardware.
+
+                Usage:  cam_save [nsamples] [label]
+
+if EXAMPLES_CAM_SAVE
+
+config EXAMPLES_CAM_SAVE_MOUNTPOINT
+        string "TF card mount point"
+        default "/mnt/sdcard"
+        ---help---
+                The FATFS mountpoint (must match STM32N6_SDMMC_MOUNTPOINT).
+
+config EXAMPLES_CAM_SAVE_PROGNAME
+        string "Program name"
+        default "cam_save"
+
+config EXAMPLES_CAM_SAVE_PRIORITY
+        int "cam_save task priority"
+        default 100
+
+config EXAMPLES_CAM_SAVE_STACKSIZE
+        int "cam_save stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif

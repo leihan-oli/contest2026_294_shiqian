@@ -1,0 +1,18 @@
+# 眼动模型训练依赖（Windows）
+#
+# ⚠️ torch / torchvision 请先用下面任一命令单独安装（CPU 版和 CUDA 版来源不同，
+#    写进 requirements.txt 会装错）：
+#      CPU （无独显）:  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#      CUDA（有独显）:  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#
+# 装完 torch 之后再执行：  pip install -r requirements.txt
+
+numpy
+pillow
+
+# ONNX 导出与验证
+onnx
+onnxruntime
+
+# 训练过程可视化（可选，train_blink.py 目前不强制依赖）
+# matplotlib

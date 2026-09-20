@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openvela.contest/schema/event.schema.json",
+  "title": "Contest Session Log Event",
+  "description": "openvela AI Contest session log single-event schema (v1.0). Each JSONL line MUST satisfy this schema.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "team_id",
+    "github_login",
+    "tool",
+    "ts",
+    "role",
+    "seq"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version. Initial release fixed at 1.0.",
+      "enum": ["1.0"]
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Internal session ID from the AI tool, e.g. ses_xxx.",
+      "minLength": 1
+    },
+    "team_id": {
+      "type": "string",
+      "description": "Team ID (e.g. contest2026-042-app), provided via TEAM_ID env var.",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_-]+$"
+    },
+    "github_login": {
+      "type": "string",
+      "description": "GitHub username identifying the specific producer (team member) of this event.",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"
+    },
+    "tool": {
+      "type": "string",
+      "description": "Source AI tool.",
+      "enum": ["opencode", "claude-code", "codex", "kiro"]
+    },
+    "ts": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp when the event occurred.",
+      "format": "date-time"
+    },
+    "role": {
+      "type": "string",
+      "description": "Event role.",
+      "enum": ["user", "assistant", "tool", "system"]
+    },
+    "seq": {
+      "type": "integer",
+      "description": "Per-session monotonic sequence number starting at 0, incremented by 1 per event. Used for resume + tamper detection.",
+      "minimum": 0
+    },
+    "text": {
+      "type": "string",
+      "description": "Text content for user / assistant / system events. Preserved in full, no truncation."
+    },
+    "thinking": {
+      "type": "string",
+      "description": "Assistant extended thinking / reasoning content (when exposed by the tool)."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "(Required when role=tool) Tool name, e.g. read / edit / bash."
+    },
+    "tool_call_id": {
+      "type": "string",
+      "description": "(Required when role=tool) Unique tool invocation ID."
+    },
+    "input": {
+      "description": "(role=tool only) Tool arguments. Kept as a structured object, not serialized into a string.",
+      "type": ["object", "array", "string", "number", "boolean", "null"]
+    },
+    "output": {
+      "description": "(role=tool only) Tool return value.",
+      "type": ["object", "array", "string", "number", "boolean", "null"]
+    },
+    "model": {
+      "type": "string",
+      "description": "(Optional) Model name in use."
+    },
+    "tokens_in": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "(Optional) Input token count. Required for token-plan upgrade audits."
+    },
+    "tokens_out": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "(Optional) Output token count."
+    },
+    "files_touched": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "(Optional) List of file paths read/written during this event."
+    },
+    "cwd": {
+      "type": "string",
+      "description": "(Optional) The plugin's working directory at the time of the event."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "(Optional) Tool execution metadata (timing, exit code, etc.)."
+    },
+    "redacted_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "(Optional) Number of redaction substitutions applied to this event, for audit."
+    }
+  },
+  "allOf": [
+    {
+      "description": "When role=tool, tool_name and tool_call_id MUST be present.",
+      "if": {
+        "properties": { "role": { "const": "tool" } }
+      },
+      "then": {
+        "required": ["tool_name", "tool_call_id"]
+      }
+    }
+  ]
+}

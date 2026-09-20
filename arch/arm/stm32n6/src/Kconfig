@@ -1,0 +1,523 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+if ARCH_CHIP_STM32N6
+
+menu "STM32N6 Chip Selection"
+
+choice
+	prompt "STM32N6 Chip Configuration"
+	default ARCH_CHIP_STM32N647X0
+
+config ARCH_CHIP_STM32N647X0
+	bool "STM32N647X0"
+	select ARCH_CORTEXM55
+	select ARCH_HAVE_MPU
+	select ARCH_HAVE_FPU
+	select ARM_HAVE_MVE
+	select ARMV8M_HAVE_ICACHE
+	select ARMV8M_HAVE_DCACHE
+	select ARMV8M_HAVE_ITCM
+	select ARMV8M_HAVE_DTCM
+
+endchoice
+
+endmenu
+
+menu "STM32N6 Clock Configuration"
+
+config STM32N6_USE_HSE
+	bool "Use HSE external oscillator"
+	default n
+	---help---
+		Enable HSE (external high-speed oscillator) as clock source.
+		If not set, HSI (64MHz internal RC) is used.
+
+config STM32N6_HSE_FREQUENCY
+	int "HSE frequency (Hz)"
+	default 32000000
+	depends on STM32N6_USE_HSE
+	---help---
+		Frequency of the external HSE oscillator in Hz.
+
+config STM32N6_USE_PLL1
+	bool "Enable PLL1 for system clock"
+	default n
+	---help---
+		Configure PLL1 as the CPU/system clock source, using the
+		M/N/IC1_DIV parameters from board.h.  PLL1 can be driven
+		from either HSI (default) or HSE (if STM32N6_USE_HSE is
+		also enabled); it does not require HSE.  A previous
+		revision of this option incorrectly declared "depends on
+		STM32N6_USE_HSE", which made the HSI+PLL1 combination
+		board.h's clock-tree comment documents (and
+		stm32n6_rcc.c's rcc_configpll1() already implements via
+		its #ifndef CONFIG_STM32N6_USE_HSE branch) unreachable
+		from menuconfig.  If not set, system runs directly from
+		HSI (or HSE if STM32N6_USE_HSE is set).
+
+endmenu
+
+menu "STM32N6 Peripheral Selection"
+
+config STM32_USART1
+	bool "USART1"
+	default n
+	select USART1_SERIALDRIVER
+	select ARCH_HAVE_SERIAL_TERMIOS
+
+config STM32_USART2
+	bool "USART2"
+	default n
+	select USART2_SERIALDRIVER
+	select ARCH_HAVE_SERIAL_TERMIOS
+
+config STM32_USART3
+	bool "USART3"
+	default n
+	select USART3_SERIALDRIVER
+	select ARCH_HAVE_SERIAL_TERMIOS
+
+config STM32_IWDG
+	bool "IWDG (Independent Watchdog)"
+	default n
+	select WATCHDOG
+	---help---
+		Enable the Independent Watchdog (IWDG) peripheral for
+		system hang detection. Registers as /dev/watchdog0 through
+		the NuttX watchdog framework. Uses LSI 32kHz clock.
+
+config STM32_WWDG
+	bool "WWDG (Window Watchdog)"
+	default n
+	select WATCHDOG
+	---help---
+		Enable the Window Watchdog (WWDG) peripheral. Registers as
+		/dev/watchdog1 through the NuttX watchdog framework. APB1
+		clocked, with an early-wakeup interrupt backing the optional
+		watchdog capture() operation.
+
+config STM32_I2C1
+	bool "I2C1"
+	default n
+	select I2C
+	---help---
+		Enable I2C1 master mode driver (interrupt-driven).
+
+config STM32_I2C2
+	bool "I2C2"
+	default n
+	select I2C
+	---help---
+		Enable I2C2 master mode driver (interrupt-driven).
+
+config STM32_I2C4
+	bool "I2C4"
+	default n
+	select I2C
+	select I2C_DRIVER
+	---help---
+		Enable I2C4 master mode driver (polled).  I2C4 is wired to the
+		onboard SHT30 temperature/humidity sensor (PB6=SCL, PB7=SDA,
+		AF6).  Selects the I2C character driver so /dev/i2c4 is exposed
+		for I2CIOC_TRANSFER (ADR-014).
+
+config STM32_EXTI
+	bool "EXTI (Extended Interrupt)"
+	default n
+	---help---
+		Enable the EXTI (Extended Interrupt and Event) controller
+		driver. Supports GPIO pin edge-triggered interrupts for
+		buttons, external events, and wakeup sources.
+
+config STM32_TIM2
+	bool "TIM2 (32-bit general-purpose timer)"
+	default n
+	select TIMER
+	---help---
+		Enable the TIM2 general-purpose timer as a NuttX timer
+		character device (/dev/timerN). TIM2 is a 32-bit timer on
+		APB1, driven at a fixed 1 MHz tick (1 us resolution).
+
+config STM32_TIM5
+	bool "TIM5 (32-bit one-shot timer)"
+	default n
+	select ONESHOT
+	---help---
+		Enable the TIM5 timer as a NuttX one-shot lower-half
+		(/dev/oneshot). TIM5 is a 32-bit timer on APB1, run as a
+		free-running counter at a 1 MHz tick with an output-compare
+		alarm for the one-shot deadline.
+
+config STM32_LPTIM1
+	bool "LPTIM1 (low-power timer)"
+	default n
+	select TIMER
+	---help---
+		Enable LPTIM1 as a NuttX timer character device (/dev/timerN).
+		LPTIM1 is a 16-bit low-power timer clocked from the LSI
+		(~32kHz), run here as a plain periodic timer.
+
+config STM32_LPTIM2
+	bool "LPTIM2 (low-power timer)"
+	default n
+	select TIMER
+	---help---
+		Enable LPTIM2 as a NuttX timer character device (/dev/timerN).
+		LPTIM2 is a 16-bit low-power timer on APB4, clocked from the
+		LSI (~32kHz), run here as a plain periodic timer.
+
+config STM32_LPTIM3
+	bool "LPTIM3 (low-power timer)"
+	default n
+	select TIMER
+	---help---
+		Enable LPTIM3 as a NuttX timer character device (/dev/timerN).
+		LPTIM3 is a 16-bit low-power timer on APB4, clocked from the
+		LSI (~32kHz), run here as a plain periodic timer.
+
+config STM32_LPTIM4
+	bool "LPTIM4 (low-power timer)"
+	default n
+	select TIMER
+	---help---
+		Enable LPTIM4 as a NuttX timer character device (/dev/timerN).
+		LPTIM4 is a 16-bit low-power timer on APB4, clocked from the
+		LSI (~32kHz), run here as a plain periodic timer.
+
+config STM32_LPTIM5
+	bool "LPTIM5 (low-power timer)"
+	default n
+	select TIMER
+	---help---
+		Enable LPTIM5 as a NuttX timer character device (/dev/timerN).
+		LPTIM5 is a 16-bit low-power timer on APB4, clocked from the
+		LSI (~32kHz), run here as a plain periodic timer.
+
+config STM32_LPTIM2_PWM
+	bool "LPTIM2 low-power PWM output (/dev/pwm0)"
+	default n
+	depends on !STM32_LPTIM2
+	select PWM
+	---help---
+		Expose LPTIM2 as a NuttX PWM character device (/dev/pwm0)
+		driving the LPTIM2_CH1 output (PF1, AF3) from the LSI clock.
+		PWM mode shares the LPTIM CR/CFGR and is mutually exclusive
+		with the plain periodic-timer mode, so this depends on
+		STM32_LPTIM2 being off.
+
+config STM32_LPTIM_STOPWAKE
+	bool "LPTIM Stop-mode wakeup self-test"
+	default n
+	depends on STM32_LPTIM3
+	---help---
+		Build the LPTIM Stop-mode wakeup self-test entry point.  It
+		arms LPTIM3 as a one-shot on the LSI, unmasks its EXTI wakeup
+		line (IMR2 line 55), puts the CPU into Stop mode, and verifies
+		via PWR_CPUCR.STOPF that Stop was genuinely entered and that
+		the LPTIM interrupt woke the core.  Destructive to /dev/timer3
+		(reprograms LPTIM3), so do not run it concurrently with the
+		timer3 drivertest.
+
+config STM32_TIM3_PWM
+	bool "TIM3 PWM output (/dev/pwm1)"
+	default n
+	select PWM
+	---help---
+		Expose TIM3 as a NuttX PWM character device (/dev/pwm1)
+		driving the TIM3_CH1 compare output in PWM mode 1.  The
+		waveform is generated internally and is intended to be routed
+		on-chip into TIM15 TI1 (via TISEL) for the wire-free capture
+		loopback, so no external GPIO pin is claimed.
+
+config STM32_TIM15_CAP
+	bool "TIM15 input capture (/dev/cap0)"
+	default n
+	depends on STM32_TIM3_PWM
+	select CAPTURE
+	---help---
+		Expose TIM15 as a NuttX input-capture character device
+		(/dev/cap0) measuring frequency and duty cycle in PWM-input
+		mode.  TIM15 TI1 is sourced internally from TIM3 CH1 through
+		the TISEL register, so the TIM3 PWM waveform is captured back
+		with zero external wiring.  Depends on STM32_TIM3_PWM as the
+		loopback signal source.
+
+config STM32_ADC1
+	bool "ADC1 (12-bit analog-to-digital converter)"
+	default n
+	select ANALOG
+	select ADC
+	---help---
+		Enable ADC1 as a NuttX ADC character device (/dev/adc0).
+		Samples the chip's internal analog sources (VREFINT) that
+		need no external wiring; conversions are software-triggered
+		and read back by polling end-of-conversion.
+
+config STM32_ADC2
+	bool "ADC2 multi-channel DMA scan (/dev/adc1)"
+	default n
+	depends on STM32_ADC1
+	select STM32_GPDMA
+	---help---
+		Enable ADC2 as a second NuttX ADC character device
+		(/dev/adc1) that scans two chip-internal voltages
+		(VBAT + VDDCORE, no external wiring), moves the results by
+		GPDMA, and arms the analog watchdog (AWD1).  Shares the ADC
+		driver with /dev/adc0 and pulls in the GPDMA controller for
+		its peripheral-to-memory transfers.
+
+config STM32_DTS
+	bool "DTS (digital temperature sensor, /dev/temp0)"
+	default n
+	---help---
+		Enable the on-chip digital temperature sensor (DTS) as a
+		character device (/dev/temp0) that reports the die junction
+		temperature.  The sensor is fully internal (no external
+		wiring); it runs in continuous mode and read() returns a
+		b16_t (Q16.16) Celsius value.  Conversion uses the fixed
+		DS14791 characterization constants in integer fixed point,
+		so no FPU is required.
+
+config STM32_HASH
+	bool "HASH (SHA-256 hardware accelerator)"
+	default n
+	---help---
+		Enable the STM32N6 HASH accelerator.  Provides the arch helper
+		stm32n6_sha256() which computes a SHA-256 digest of an in-memory
+		buffer in polling mode.  The engine is fully on-chip, so its
+		correctness is verifiable against a known SHA-256 test vector
+		without any external wiring or instrument.
+
+config STM32_DMA2D
+	bool "DMA2D (Chrom-Art graphics accelerator, probe)"
+	default n
+	---help---
+		Enable the STM32N6 DMA2D (Chrom-Art) accelerator.  Currently
+		provides the arch helper stm32n6_dma2d_probe(), a one-shot
+		register-to-memory fill that grants DMA2D the SRAM region's
+		trusted compartment ID via RIFSC and verifies the write landed.
+		It determines whether DMA2D can write SRAM in DEV boot (unlike
+		GPDMA1, whose CID is fixed by ROM and cannot be granted).  Fully
+		on-chip: no external wiring or instrument required.
+
+config STM32_RTC
+	bool "RTC (Real-Time Clock)"
+	default n
+	select RTC_DATETIME
+	---help---
+		Enable the RTC peripheral for calendar date/time.
+		Uses LSI ~32kHz clock source. Provides time for
+		file system timestamps and alarm functionality.
+
+config STM32_GPDMA
+	bool "GPDMA (General Purpose DMA)"
+	default n
+	select DMA
+	---help---
+		Enable the GPDMA (General Purpose DMA) controller for
+		memory-to-memory, memory-to-peripheral, and
+		peripheral-to-memory transfers.
+
+config STM32_FSBL_REGRESS
+	bool "FSBL regression probe (RISAF/LPENR/DMA2D/GPDMA)"
+	default n
+	depends on STM32_GPDMA
+	---help---
+		Build stm32n6_fsbl_regress(): a one-shot probe that verifies on
+		real silicon that the custom FSBL's widened RISAF2/3 windows
+		(AXISRAM1/2 open to every CID) and Sleep clock keep-alive
+		(LTDCLPEN + MEMLPENR) did not break the other CID0 bus masters
+		that share SRAM.  Dumps the RIF/LPENR configuration, runs DMA2D
+		register-to-memory fills into FLEXMEM and AXISRAM1/2, and a
+		GPDMA1 memory-to-memory copy through the stm32n6_dma API.
+
+config STM32_CAM_PROBE
+	bool "Camera hardware probe (DCMIPP + IMX335 I2C)"
+	default n
+	depends on STM32_I2C2
+	---help---
+		Build stm32n6_cam_probe(): verifies on real silicon that the
+		camera hardware chain is reachable -- the DCMIPP clock gate and
+		identification register, and the IMX335 sensor answering on I2C2
+		(ID register 0x3912).  First step of the Phase 6 camera driver
+		port before implementing the DCMIPP capture pipeline.
+
+config STM32_IMX335
+	bool "IMX335 MIPI CSI-2 image sensor"
+	default n
+	depends on STM32_I2C2
+	---help---
+		Build the stm32n6_imx335 driver: IMX335 (Sony 5MP) power-up
+		sequence (PWDN=PG6/RST=PG4) and I2C2 register programming
+		(2592x1944 RAW10, 2 data lanes, 37 MHz input clock).  The
+		sensor streams RAW10 frames on MIPI CSI-2 once configured.
+
+config STM32_GT9XXX
+	bool "GT9xxx capacitive touch (bit-bang I2C)"
+	default n
+	---help---
+		Build the stm32n6_gt9xxx driver: GT911/GT9147 capacitive
+		touch on the 7" RGB panel via bit-bang I2C (SCL=PD14,
+		SDA=PD4, RST=PD10, INT=PB3).
+
+config STM32N6_GT9XXX_INPUT
+	bool "GT9xxx touchscreen input device (/dev/input0)"
+	default n
+	depends on STM32_GT9XXX && INPUT_TOUCHSCREEN
+	---help---
+		Register the GT9xxx as a standard NuttX touchscreen
+		input device (/dev/input0) through the touchscreen
+		lower/upper-half framework, so LVGL can read touch
+		events directly.
+
+config STM32N6_LCD
+	bool "GT9xxx/RGB-panel LCD lower-half (/dev/lcd0)"
+	default n
+	depends on LCD_DEV
+	---help---
+		Expose the shared LTDC framebuffer through the standard NuttX
+		LCD interface (/dev/lcd0) so LVGL can use its LCD path
+		(intermediate draw buffer + PUTAREA) and avoid DIRECT-mode
+		tearing.
+
+config STM32_DCMIPP
+	bool "DCMIPP camera capture pipeline"
+	default n
+	depends on STM32_IMX335
+	---help---
+		Build the stm32n6_dcmipp driver: DCMIPP + CSI-2 receiver
+		configuration for the IMX335 sensor (2 data lanes, PHY 1600,
+		VC0 RAW10, PIPE1 RAW10->RGB565 800x480 downsize).  Continuous
+		capture writes directly into the LTDC framebuffer for live
+		display.
+
+config STM32N6_VIDEO
+	bool "V4L2 camera capture device (/dev/video0)"
+	default n
+	depends on STM32_DCMIPP && VIDEO_STREAM
+	---help---
+		Build the stm32n6_video driver: a V4L2 character device
+		(/dev/video0) that wraps the DCMIPP + IMX335 capture pipeline
+		(800x480 RGB565).  STREAMON starts capture into the shared
+		LTDC framebuffer; read()/DQBUF block until a frame completes
+		and return the RGB565 frame to the caller.
+
+config STM32N6_VIDEO_DEVPATH
+	string "V4L2 video device path"
+	default "/dev/video0"
+	depends on STM32N6_VIDEO
+
+config STM32N6_ATON_AIE
+	bool "Neural-ART NPU AI Engine lower-half (/dev/aie0)"
+	default n
+	depends on AI_ENGINE
+	---help---
+		Build the stm32n6_aton_aie driver: an AI Engine lower-half
+		(/dev/aie0) for the ST Neural-ART NPU.  Brings up the NPU clock,
+		reset and interrupt lines (NVIC 53..56) and registers with the
+		generic AI Engine upper-half (ai_engine.c).  The ST ATON runtime
+		is linked in a later stage once a compiled-in model is available.
+
+config STM32N6_ATON_AIE_DEVPATH
+	string "AI Engine device path"
+	default "/dev/aie0"
+	depends on STM32N6_ATON_AIE
+
+config STM32_SPI1
+	bool "SPI1"
+	default n
+	select SPI
+	---help---
+		Enable SPI1 master mode driver.
+
+config STM32_SPI2
+	bool "SPI2"
+	default n
+	select SPI
+	---help---
+		Enable SPI2 master mode driver.
+
+config STM32_SDMMC1
+	bool "SDMMC1 (SD Card)"
+	default n
+	select MMCSD
+	---help---
+		Enable SDMMC1 driver for SD card storage.
+
+config STM32N6_SDMMC_DEVPATH
+	string "SDMMC block device path"
+	default "/dev/mmcsd0"
+	depends on STM32_SDMMC1
+	---help---
+		The block device node registered by stm32n6_sdmmc_initialize()
+		(FATFS mounts this path).
+
+config STM32N6_SDMMC_MOUNTPOINT
+	string "SDMMC FATFS mount point"
+	default "/mnt/sdcard"
+	depends on STM32_SDMMC1
+	---help---
+		The directory where the SDMMC1 FATFS is mounted by the board
+		bringup (dataset capture writes frames under this path).
+
+config STM32_XSPI1
+	bool "XSPI1 (External SPI Flash)"
+	default n
+	---help---
+		Enable XSPI1 driver for external NOR/NAND Flash.
+
+config STM32_XSPI2
+	bool "XSPI2 (External SPI Flash)"
+	default n
+	---help---
+		Enable XSPI2 driver for external NOR/NAND Flash.
+		On the ALIENTEK ATK-DNN647 the NOR Flash (MX25UM25645G)
+		is on XSPI2 (memory-mapped at 0x70000000).
+
+config STM32_EMAC
+	bool "Ethernet MAC (GMAC)"
+	default n
+	select NET
+	select NETDEV
+	---help---
+		Enable Ethernet GMAC driver for network connectivity.
+
+config STM32_SAI1
+	bool "SAI1 (Serial Audio Interface)"
+	default n
+	---help---
+		Enable the SAI1 driver.
+
+		This is a block driver, not an audio framework lower half: it
+		offers plain init/write/stop entry points and leaves buffering,
+		decoding and mixing to its caller.  It therefore does not pull
+		in CONFIG_AUDIO, whose upper half nothing here would use.
+
+config STM32_FDCAN1
+	bool "FDCAN1 (CAN Bus)"
+	default n
+	select CAN
+	---help---
+		Enable FDCAN1 driver for CAN bus communication.
+
+config STM32_OTG
+	bool "USB OTG HS"
+	default n
+	select USBDEV
+	---help---
+		Enable USB OTG HS device controller.
+
+config STM32_RNG
+	bool "RNG (Random Number Generator)"
+	default n
+	select ARCH_HAVE_RNG
+	---help---
+		Enable the STM32N6 hardware random number generator.
+		Provides /dev/random and optionally /dev/urandom.
+
+endmenu
+
+endif

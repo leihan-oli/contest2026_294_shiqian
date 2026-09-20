@@ -1,0 +1,33 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_FSBL_REGRESS
+        tristate "FSBL regression probe"
+        default n
+        ---help---
+                Run the FSBL regression probe on real silicon: read-back of
+                the RIF/LPENR configuration the custom FSBL programmed,
+                DMA2D R2M writes into FLEXMEM and AXISRAM1/2, and a GPDMA1
+                M2M copy.  Verifies the widened RISAF2/3 windows did not
+                break the CID0 masters.  Usage: fsbl_regress
+
+if EXAMPLES_FSBL_REGRESS
+
+config EXAMPLES_FSBL_REGRESS_PROGNAME
+        string "Program name"
+        default "fsbl_regress"
+        ---help---
+                This is the name of the program that will be used when the NSH ELF
+                program is installed.
+
+config EXAMPLES_FSBL_REGRESS_PRIORITY
+        int "FSBL regress task priority"
+        default 100
+
+config EXAMPLES_FSBL_REGRESS_STACKSIZE
+        int "FSBL regress stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif

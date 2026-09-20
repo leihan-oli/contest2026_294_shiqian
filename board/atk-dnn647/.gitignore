@@ -1,0 +1,6 @@
+# Build artifacts
+*.o
+*.a
+*.d
+.depend
+Make.dep

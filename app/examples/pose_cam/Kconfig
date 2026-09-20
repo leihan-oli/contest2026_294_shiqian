@@ -1,0 +1,45 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_POSE_CAM
+	tristate "Camera -> ATON NPU pose estimation (ST 994)"
+	default n
+	depends on STM32N6_VIDEO
+	---help---
+		Capture a frame from /dev/video0 (IMX335 -> DCMIPP -> LTDC
+		framebuffer), convert it to the model input (RGB888 256x256),
+		run ST's 994 yolov8n-pose network on the ATON NPU and print the
+		17 COCO keypoints of the best detection.
+
+		The NPU side is configured separately (CONFIG_LIB_AI_ATON with
+		the pose994 model linked in).  A mounted TF card is optional:
+		when the mount point is writable, the captured frame (PPM), the
+		exact input tensor and the raw output tensor are written there
+		for PC-side inspection.
+
+		Usage:  pose_cam [runs]
+
+if EXAMPLES_POSE_CAM
+
+config EXAMPLES_POSE_CAM_MOUNTPOINT
+	string "TF card mount point"
+	default "/mnt/sdcard"
+	---help---
+		Where the frame/tensor dumps are written.  Saving is skipped
+		with a message when the path is not writable.
+
+config EXAMPLES_POSE_CAM_PROGNAME
+	string "Program name"
+	default "pose_cam"
+
+config EXAMPLES_POSE_CAM_PRIORITY
+	int "pose_cam task priority"
+	default 100
+
+config EXAMPLES_POSE_CAM_STACKSIZE
+	int "pose_cam stack size"
+	default 8192
+
+endif

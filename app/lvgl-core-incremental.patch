@@ -1,0 +1,22 @@
+diff --git a/src/draw/lv_draw_buf_blur.c b/src/draw/lv_draw_buf_blur.c
+index 8705cb8ff..4873c8a0f 100644
+--- a/src/draw/lv_draw_buf_blur.c
++++ b/src/draw/lv_draw_buf_blur.c
+@@ -11,9 +11,15 @@
+ #include "lv_draw_buf_blur.h"
+ #include <math.h>
+ 
+-/* LV_USE_ARM_MVE_SW is only used for code testing */
++/* LV_USE_ARM_MVE_SW is only used for code testing.
++ *
++ * NOTE: openvela NuttX selects CONFIG_ARM_HAVE_MVE for Cortex-M55 but does
++ * not add the -march=...+mve compile flag, so arm_mve.h vector types are
++ * undefined and the MVE path fails to build.  Gate on LVGL's own
++ * LV_USE_ARM_MVE_SW only; the plain C implementation is used otherwise.
++ */
+ 
+-#if defined(CONFIG_ARM_HAVE_MVE) || defined(LV_USE_ARM_MVE_SW)
++#if defined(LV_USE_ARM_MVE_SW)
+     #define LV_DRAW_BUF_BLUR_MVE_OPT 1
+ #else
+     #define LV_DRAW_BUF_BLUR_MVE_OPT 0

@@ -1,0 +1,36 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_CAM
+	tristate "IMX335 camera live-view demo"
+	default n
+	depends on STM32_DCMIPP && STM32_IMX335 && VIDEO_FB
+	---help---
+		Live camera view demo for the ALIENTEK STM32N647 board: powers
+		the IMX335 sensor, initializes the DCMIPP capture pipeline and
+		streams 800x480 RGB565 frames directly into the LTDC
+		framebuffer (/dev/fb0).  Usage:
+		  cam start   - power sensor, init DCMIPP, start capture
+		  cam stop    - stop capture
+		  cam status  - show captured frame count
+
+if EXAMPLES_CAM
+
+config EXAMPLES_CAM_PROGNAME
+	string "Program name"
+	default "cam"
+	---help---
+		This is the name of the program that will be used when the NSH
+		ELF program is installed.
+
+config EXAMPLES_CAM_PRIORITY
+	int "CAM task priority"
+	default 100
+
+config EXAMPLES_CAM_STACKSIZE
+	int "CAM stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

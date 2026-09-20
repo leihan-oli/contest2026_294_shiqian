@@ -1,0 +1,42 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_EYE_GUIDE
+	tristate "Eye-capture framing guide (ROI overlay on the LCD)"
+	default n
+	depends on STM32N6_VIDEO
+	---help---
+		Streams the camera and draws the eye ROI on top of it: a green box
+		(x=235 y=155 300x145 in the 800x480 frame), four yellow corner ticks,
+		a centre cross and a dashed line marking the eye height (+28 px
+		inside the ROI).  Align both eyes inside the box and on that line
+		before capturing a dataset.
+
+		Why: training and inference must see the same framing, and the first
+		capture round showed how fast that drifts -- the closed-eye batch
+		ended up ~1.4x further from the camera than the open-eye batch,
+		which teaches the classifier "face size" instead of "eyelid state".
+
+		The camera writes the same buffer the LTDC scans out, so the guide is
+		redrawn continuously and visibly flickers; lower the frame rate
+		("imx335_tune fps 5") for a steadier box.
+
+		Usage:  eye_guide [seconds]
+
+if EXAMPLES_EYE_GUIDE
+
+config EXAMPLES_EYE_GUIDE_PROGNAME
+	string "Program name"
+	default "eye_guide"
+
+config EXAMPLES_EYE_GUIDE_PRIORITY
+	int "eye_guide task priority"
+	default 100
+
+config EXAMPLES_EYE_GUIDE_STACKSIZE
+	int "eye_guide stack size"
+	default 4096
+
+endif

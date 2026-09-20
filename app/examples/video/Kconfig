@@ -1,0 +1,35 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_VIDEO
+        tristate "V4L2 camera capture test (/dev/video0)"
+        default n
+        depends on STM32N6_VIDEO
+        ---help---
+                V4L2 camera capture demo for the ALIENTEK STM32N647 board:
+                opens /dev/video0, queries the device, sets 800x480 RGB565,
+                streams and reads frames in zero-copy frame-sync mode
+                (read(fd, NULL, 0) + direct access to the LTDC framebuffer).
+
+                Usage:  video [nframes]
+
+if EXAMPLES_VIDEO
+
+config EXAMPLES_VIDEO_PROGNAME
+        string "Program name"
+        default "video"
+        ---help---
+                This is the name of the program that will be used when the NSH
+                ELF program is installed.
+
+config EXAMPLES_VIDEO_PRIORITY
+        int "VIDEO task priority"
+        default 100
+
+config EXAMPLES_VIDEO_STACKSIZE
+        int "VIDEO stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif

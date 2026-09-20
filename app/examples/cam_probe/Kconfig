@@ -1,0 +1,32 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_CAM_PROBE
+        tristate "Camera hardware probe"
+        default n
+        ---help---
+                Run the camera hardware probe on real silicon: verifies the
+                DCMIPP clock gate and identification register, and the IMX335
+                sensor answering on I2C2 (ID register 0x3912).  First step of
+                the Phase 6 camera driver port.  Usage: cam_probe
+
+if EXAMPLES_CAM_PROBE
+
+config EXAMPLES_CAM_PROBE_PROGNAME
+        string "Program name"
+        default "cam_probe"
+        ---help---
+                This is the name of the program that will be used when the NSH ELF
+                program is installed.
+
+config EXAMPLES_CAM_PROBE_PRIORITY
+        int "CAM probe task priority"
+        default 100
+
+config EXAMPLES_CAM_PROBE_STACKSIZE
+        int "CAM probe stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif

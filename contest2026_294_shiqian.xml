@@ -1,16 +1,50 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <manifest>
   <!--
-    Team repo manifest. Includes the full openvela base project set
-    (openvela.xml in this same repo) and adds this team repo as a self-ref
-    project, exposing its work-form subdirectories to openvela working-tree
-    locations via <linkfile>. remote/default come from the included openvela.xml.
+    队伍 #294（shiqian）作品仓 manifest。
+
+    include 本仓同目录下的 openvela.xml（openvela 全量工程清单），再把本仓作为
+    自引用 project，用 <linkfile> 把作品子目录软链到 openvela 编译树对应位置，
+    因此编译时不需要手动拷贝任何文件；remote / default 来自被 include 的 openvela.xml。
+
+    映射关系：
+      board/atk-dnn647                 板级适配  到 vendor/openvela/boards/atk-dnn647
+      arch/arm/stm32n6/{src,include}   芯片层    到 nuttx/arch/arm/{src,include}/stm32n6
+      libs/ai_aton                     NPU 运行时 到 nuttx/libs/ai_aton
+      app/examples/*                   应用      到 apps/examples/*
+
+    芯片层/板级/应用目录之外的 13 处核心树改动以补丁提交，另有等价 overlay 兜底
+    （见 README「从零复现」与 core-tree-overlay/README.md）：
+      arch/arm/stm32n6/nuttx-core-incremental.patch   nuttx              9 个文件
+      app/apps-core-incremental.patch                 apps               2 个文件
+      board/vendor-openvela-core-incremental.patch    vendor/openvela    1 个文件
+      app/lvgl-core-incremental.patch                 LVGL               1 个文件
   -->
   <include name="openvela.xml"/>
 
   <project path="contest2026_294_shiqian" name="contest2026_294_shiqian">
-    <linkfile src="app/hello_app" dest="packages/demos/contest2026_294_hello_app"/>
-    <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_294_hello_quickapp"/>
-    <linkfile src="board/contest_board" dest="vendor/openvela/boards/contest2026_294_board"/>
+    <!-- 板级适配（STM32N647 / 正点原子 ATK-DNN647） -->
+    <linkfile src="board/atk-dnn647" dest="vendor/openvela/boards/atk-dnn647"/>
+
+    <!-- 芯片层（STM32N6：ATON / DCMIPP / LTDC / XSPI / SDMMC 等驱动） -->
+    <linkfile src="arch/arm/stm32n6/src" dest="nuttx/arch/arm/src/stm32n6"/>
+    <linkfile src="arch/arm/stm32n6/include" dest="nuttx/arch/arm/include/stm32n6"/>
+
+    <!-- ATON NPU 运行时（OSAL + 设备胶水 + 模型 + 预编译库） -->
+    <linkfile src="libs/ai_aton" dest="nuttx/libs/ai_aton"/>
+
+    <!-- 应用与调试工具 -->
+    <linkfile src="app/examples/eye_cam" dest="apps/examples/eye_cam"/>
+    <linkfile src="app/examples/eye_guide" dest="apps/examples/eye_guide"/>
+    <linkfile src="app/examples/palm_cam" dest="apps/examples/palm_cam"/>
+    <linkfile src="app/examples/pose_cam" dest="apps/examples/pose_cam"/>
+    <linkfile src="app/examples/aie_probe" dest="apps/examples/aie_probe"/>
+    <linkfile src="app/examples/cam" dest="apps/examples/cam"/>
+    <linkfile src="app/examples/cam_probe" dest="apps/examples/cam_probe"/>
+    <linkfile src="app/examples/cam_save" dest="apps/examples/cam_save"/>
+    <linkfile src="app/examples/fbcolor" dest="apps/examples/fbcolor"/>
+    <linkfile src="app/examples/fsbl_regress" dest="apps/examples/fsbl_regress"/>
+    <linkfile src="app/examples/imx335_tune" dest="apps/examples/imx335_tune"/>
+    <linkfile src="app/examples/video" dest="apps/examples/video"/>
   </project>
 </manifest>

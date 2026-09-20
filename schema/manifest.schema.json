@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openvela.contest/schema/manifest.schema.json",
+  "title": "Contest Session Log Manifest",
+  "description": "manifest.json schema (v1.0). Required at the root of each demo repo's logs/ directory.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "team_id",
+    "github_login",
+    "sessions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0"]
+    },
+    "team_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_-]+$"
+    },
+    "github_login": {
+      "type": "string",
+      "description": "The GitHub username this manifest belongs to. Matches the parent logs/<github_login>/ directory name.",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"
+    },
+    "generator": {
+      "type": "string",
+      "description": "(Optional) Plugin version string that generated this manifest, e.g. 'opencode-collector@1.0.0'."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "(Optional) Last manifest update time."
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "session_id",
+          "tool",
+          "started_at",
+          "last_event_at",
+          "event_count",
+          "file_path",
+          "collection_mode"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "session_id": { "type": "string", "minLength": 1 },
+          "tool": {
+            "type": "string",
+            "enum": ["opencode", "claude-code", "codex", "kiro"]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_event_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "file_path": {
+            "type": "string",
+            "description": "Relative path of form logs/<github_login>/<date>/<tool>__<session_id>.jsonl",
+            "pattern": "^logs/[A-Za-z0-9][A-Za-z0-9-]{0,38}/\\d{4}-\\d{2}-\\d{2}/(opencode|claude-code|codex|kiro)__.+\\.jsonl$"
+          },
+          "collection_mode": {
+            "type": "string",
+            "description": "Data collection mode. cli=full CLI capture; vscode_extension=full VS Code extension capture; vscode_extension_partial=partial (e.g. Claude Code main transcript missing)",
+            "enum": ["cli", "vscode_extension", "vscode_extension_partial"]
+          },
+          "data_completeness_warning": {
+            "type": "string",
+            "description": "(Recommended when collection_mode=vscode_extension_partial) Description of missing data."
+          },
+          "model": { "type": "string" },
+          "tokens_total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "(Optional) Cumulative token usage for this session, used for token-plan upgrade audits."
+          },
+          "redacted_count_total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "(Optional) Cumulative redaction substitution count for this session."
+          },
+          "health": {
+            "type": "string",
+            "enum": ["ok", "degraded", "error"],
+            "description": "Session collection health: ok=normal; degraded=partial errors logged in errors/; error=fully failed"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+diff --git a/boards/common/src/qemu_initialize.c b/boards/common/src/qemu_initialize.c
+index bd3c30d..40bded2 100644
+--- a/boards/common/src/qemu_initialize.c
++++ b/boards/common/src/qemu_initialize.c
+@@ -96,7 +96,7 @@ void goldfish_board_initialize(void)
+ }
+ #endif
+ 
+-void board_early_initialize(void)
++void __attribute__((weak)) board_early_initialize(void)
+ {
+ #if defined(CONFIG_VELA_TEE)
+   /* Non-secure Physical Timer */
+@@ -109,7 +109,7 @@ void board_early_initialize(void)
+ #endif
+ }
+ 
+-void board_late_initialize(void)
++void __attribute__((weak)) board_late_initialize(void)
+ {
+   board_init_mmio();
+ 
+@@ -146,7 +146,7 @@ void board_late_initialize(void)
+ 
+ }
+ 
+-int board_app_initialize(uintptr_t arg)
++int __attribute__((weak)) board_app_initialize(uintptr_t arg)
+ {
+   board_init_app();
+   return 0;

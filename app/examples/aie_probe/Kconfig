@@ -1,0 +1,42 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_AIE_PROBE
+        tristate "Neural-ART NPU AI Engine probe (/dev/aie0)"
+        default n
+        depends on STM32N6_ATON_AIE
+        ---help---
+                AI Engine probe for the ALIENTEK STM32N647 board: opens
+                /dev/aie0, loads an inference session and exercises the
+                feed-input / get-output ioctls.  Verifies the full AI
+                Engine registration chain (board_bringup ->
+                stm32n6_aton_aie_initialize -> aie_register).
+
+                Usage:  aie_probe
+
+if EXAMPLES_AIE_PROBE
+
+config EXAMPLES_AIE_PROBE_DEVPATH
+        string "AI Engine device path"
+        default "/dev/aie0"
+        ---help---
+                The AI Engine device node opened by the probe.
+
+config EXAMPLES_AIE_PROBE_PROGNAME
+        string "Program name"
+        default "aie_probe"
+        ---help---
+                This is the name of the program that will be used when the
+                NSH ELF program is installed.
+
+config EXAMPLES_AIE_PROBE_PRIORITY
+        int "AIE probe task priority"
+        default 100
+
+config EXAMPLES_AIE_PROBE_STACKSIZE
+        int "AIE probe stack size"
+        default DEFAULT_TASK_STACKSIZE
+
+endif

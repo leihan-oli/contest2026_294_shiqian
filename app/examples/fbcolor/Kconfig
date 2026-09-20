@@ -1,0 +1,30 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_FBCOLOR
+	tristate "FBCOLOR framebuffer color fill test"
+	default n
+	---help---
+		Fill the /dev/fb0 framebuffer with a solid color (RGB565).
+		Usage: fbcolor red|green|blue|white|black|0xRRRR|r g b
+
+if EXAMPLES_FBCOLOR
+
+config EXAMPLES_FBCOLOR_PROGNAME
+	string "Program name"
+	default "fbcolor"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config EXAMPLES_FBCOLOR_PRIORITY
+	int "FBCOLOR task priority"
+	default 100
+
+config EXAMPLES_FBCOLOR_STACKSIZE
+	int "FBCOLOR stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

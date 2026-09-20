@@ -1,0 +1,41 @@
+# 构建产物
+*.o
+*.a
+*.elf
+*.dis
+cmake_out/
+nuttx/nuttx
+nuttx/nuttx.bin
+firmware/build/
+firmware/sdtest/build/          # 早期裸机 SD 测试的构建产物（源码与脚本已保留）
+
+# 已烧录固件镜像保留（firmware/images/ 需要提交）
+!firmware/images/
+*.bin
+*.hex
+!firmware/images/*.bin
+!firmware/images/*.hex
+
+# 工具链/环境
+prebuilts/
+build/
+
+# Python
+__pycache__/
+*.pyc
+
+# 编辑器/系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 调试产物（保留最新固件，其余归档）
+# 参见 SoftwarePackage/rubbish/
+
+# 预编译库：ATON 链接步骤需要 vendor/lib 下的 .a，它不是构建产物
+!libs/ai_aton/vendor/lib/*.a
+
+# 已烧录镜像：firmware/images/ 下的历史版本一并保留
+!firmware/images/**/*.bin
+!firmware/images/**/*.hex

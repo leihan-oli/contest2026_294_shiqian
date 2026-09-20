@@ -1,0 +1,80 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_PALM_CAM
+	tristate "Camera -> ATON NPU palm detection (ST 995)"
+	default n
+	depends on STM32N6_VIDEO
+	---help---
+		Capture a frame from /dev/video0 (IMX335 -> DCMIPP -> LTDC
+		framebuffer), convert it to the model input (RGB888 256x256),
+		run ST's 994 yolov8n-pose network on the ATON NPU and print the
+		best palm detection (score, box, 7 palm landmarks).
+
+		The NPU side is configured separately (CONFIG_LIB_AI_ATON with
+		the pose994 model linked in).  A mounted TF card is optional:
+		when the mount point is writable, the captured frame (PPM), the
+		exact input tensor and the raw output tensor are written there
+		for PC-side inspection.
+
+		Usage:  palm_cam [runs]
+
+if EXAMPLES_PALM_CAM
+
+config EXAMPLES_PALM_CAM_OVERLAY
+	bool "Draw the detection on the LCD"
+	default y
+	---help---
+		Annotate the frozen camera frame on /dev/fb0: a green (palm) or red
+		(no palm) band across the top, the confidence as digits and a bar,
+		the decoded box and the seven keypoints.
+
+		The stream is stopped as soon as a frame has been captured, because
+		the DCMIPP writes the same buffer the LTDC scans out: anything drawn
+		while the camera streams would be overwritten within one frame
+		time.  Keeping the frame frozen is what makes the result readable
+		on the panel instead of only on the serial console.
+
+config EXAMPLES_PALM_CAM_LETTERBOX
+	bool "Keep the camera aspect ratio (letterbox input)"
+	default n
+	---help---
+		ST's reference application (Projects/99_Applications/
+		995_AI_Hand_Landmarks) feeds the model a 192x115 picture with
+		black rows underneath, and that is what this option reproduces
+		from the 800x480 LTDC framebuffer.
+
+		It is OFF by default because on this board it measurably costs
+		detection margin: for the same frame the reference model scores
+		logit +0.86 with the letterbox layout, +2.49 when the frame is
+		stretched into 192x192 (and +1.95 with a centred square crop).
+		The ATON NPU and the PC reference differ by up to ~3.5 logits on
+		individual inputs, so a 0.86 margin is below that noise floor and
+		the detection can flip sign (observed: palm clearly in view, board
+		peak logit -2.59 -> "no palm").  With the stretch layout the same
+		kind of frame was detected at logit +1.84 on the board.
+
+		Enable it only to reproduce ST's layout for comparison.
+
+config EXAMPLES_PALM_CAM_MOUNTPOINT
+	string "TF card mount point"
+	default "/mnt/sdcard"
+	---help---
+		Where the frame/tensor dumps are written.  Saving is skipped
+		with a message when the path is not writable.
+
+config EXAMPLES_PALM_CAM_PROGNAME
+	string "Program name"
+	default "palm_cam"
+
+config EXAMPLES_PALM_CAM_PRIORITY
+	int "palm_cam task priority"
+	default 100
+
+config EXAMPLES_PALM_CAM_STACKSIZE
+	int "palm_cam stack size"
+	default 8192
+
+endif
