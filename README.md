@@ -37,7 +37,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | Phase 5 | ✅ | **LTDC 800×480 + LVGL 眼控界面**：3×2 网格主页 + 6 个二级页 |
 | Phase 6 | ✅ | **DCMIPP + IMX335 实时预览**、拍照存 BMP（含倒计时与重拍） |
 | Phase 7 | ✅ | **NPU/ATON 双模型**：人脸检测 + 眼动五分类（991 张自采数据集） |
-| Phase 8 | ✅ | **眼控应用**：闭眼进入 / 左看返回 / 持续注视触发 + LED、信息、拍照、串口、关于 |
+| Phase 8 | ✅ | **眼控应用**：闭眼=确认/进入（保持 0.8 s）、左右看=移动选择（1.2 s）、二级页内左看=返回（2.0 s）+ LED、信息、拍照、串口、关于 |
 | 附加 | ✅ | HyperRAM(32 MB) 打通、GT911 触摸、蜂鸣器音调反馈、系统信息页 |
 
 **眼动识别实测**：自采数据集 991 张（五类），float 991/991、int8 990/991；板端实时运行
@@ -52,7 +52,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | **应用层** | **12 个 openvela 应用 / 12,170 行**（`apps/examples/`）：眼控主应用（含自绘 4 档位图字库）+ 11 个移植与调试工具（取帧 / 存图 / NPU 探针 / FSBL 自检 / 显示 / 视频 / 成像调试） |
 | **设备节点** | **17+ 个**：`/dev/aie0`(NPU)、`/dev/lcd0`、`/dev/fb0`、`/dev/input0`、`/dev/mmcsd0`、`/dev/userleds`、`/dev/buttons`、`/dev/timer0–5`、`/dev/oneshot`、`/dev/watchdog0/1`、`/dev/adc0/1`、`/dev/pwm0/1`、`/dev/temp0`、`/dev/cap0`、`/dev/i2c2`、`/dev/i2c4` |
 | **核心树改动** | **13 个文件 / 4 个仓**：nuttx（Kconfig 挂接、fault 处理、cache、ATON 头）、apps（speexdsp、lvgldemo）、vendor/openvela（board hook 改 weak）、LVGL（MVE 编译门控）；补丁 + `core-tree-overlay/` 双通道交付，`scripts/verify-core-tree.sh` 离线自证三者一致 |
-| **原厂例程对照** | 原厂 **66 个裸机例程工程**（`01_LED` … `99_Applications/995_AI_Hand_Landmarks`）；本项目把与产品相关的初始化序列逐一移植进 NuttX：`15_RGBLCD`（LTDC 时序/引脚）、`38_SD_Card` / `39_FatFs`（SDMMC1 + FAT32 读写，拍照落盘）、`995_AI_Hand_Landmarks`（NPU/ATON 移植路径）、`01_LED`（板级点亮）、`40_Chinese_Show` 与官方 FSBL（XSPI1/HyperRAM 配置金标准），并全部上板验证。按“所需外设是否已在端口内适配”逐项对照，**当前板级配置已支持跑通 41/66 个例程**（板上外设 + LTDC/DMA2D + NPU + FPU/DSP/RTOS 等能力；其中触摸与 NPU 相关例程为同能力覆盖并已实测：`11_TPAD`、`27_Touch`、`991–995_AI_*`），另有 **7 个**例程所需的 FDCAN、USB 主机/设备与以太网控制器驱动已随端口提供；受**固件窗口**限制（FSBL 单次载入 1 MiB + 内部 RAM 2 MiB），未把全部例程代码纳入本仓库 |
+| **原厂例程对照** | 原厂 **66 个裸机例程工程**（`01_LED` … `99_Applications/995_AI_Hand_Landmarks`）；本项目把与产品相关的初始化序列逐一移植进 NuttX：`15_RGBLCD`（LTDC 时序/引脚）、`38_SD_Card` / `39_FatFs`（SDMMC1 + FAT32 读写，拍照落盘）、`995_AI_Hand_Landmarks`（NPU/ATON 移植路径）、`01_LED`（板级点亮）、`40_Chinese_Show` 与官方 FSBL（XSPI1/HyperRAM 配置金标准），并全部上板验证。按“所需外设是否已在端口内适配”逐项对照，**当前板级配置已支持跑通 41/66 个例程**（板上外设 + LTDC/DMA2D + NPU + FPU/DSP/RTOS 等能力；其中触摸与 NPU 相关例程为同能力覆盖并已实测：`11_TPAD`、`27_Touch`、`991–995_AI_*`），另有 **7 个**例程所需的 FDCAN、USB 主机/设备与以太网控制器驱动**源码**已随端口提供（源码 + Kconfig + 构建接线齐备，但**无配置启用、未实测**，见下表「随端口提供」的状态列）；受**固件窗口**限制（FSBL 单次载入 1 MiB + 内部 RAM 2 MiB），未把全部例程代码纳入本仓库 |
 | **系统能力** | NSH shell、procfs / tmpfs、FAT32 + SD 卡、LVGL 9.1 图形栈、ATON NPU 运行时、V4L2 风格取帧、多路定时器 / oneshot / 看门狗 / ADC / PWM / RTC / HASH |
 
 ## 外设与驱动适配
@@ -83,21 +83,25 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | 缓存 / 安全域 | CACHEAXI、I-Cache / D-Cache、RIF/RISAF 授权 | ★ `stm32n6_cacheaxi.c`、`stm32n6_start.c`、`stm32n6_rcc.c` | 性能关键路径：D-Cache 生效后单帧 **2.7 s → 60 ms（45×）** |
 | 异常与复位 | HardFault/MemFault/BusFault/UsageFault 处理、复位原因 | `arm_m/*`、★ `stm32n6_fsbl_regress.c` | 崩溃可定位到函数与行，不静默重启 |
 
-### 随端口提供（代码与配置齐备，本产品路径未启用）
+### 随端口提供（源码 + Kconfig + 构建接线齐备；**非产品路径**，各项验证程度见「状态」列）
 
-| 外设 | 驱动 | 设备节点 / 配置 |
-|------|------|------------------|
-| ADC1 / ADC2 | `stm32n6_adc.c` | `/dev/adc0`、`/dev/adc1`（`nsh-test` 配置） |
-| PWM | `stm32n6_tim.c` | `/dev/pwm0`、`/dev/pwm1` |
-| 温度传感器 | `stm32n6_dts.c` | `/dev/temp0` |
-| RTC | `stm32n6_rtc.c` + lowerhalf | `/dev/rtc0` |
-| HASH / 加解密 | `stm32n6_hash.c` | `nsh-test` 配置 |
-| 低功耗定时器 | `stm32n6_lptim.c` | 可选 |
-| CAN / CAN FD | `stm32n6_fdcan.c` | 可选 |
-| 以太网 MAC | `stm32n6_ethernet.c` | `edgesight` 配置（含 lwIP、TCP/UDP） |
-| USB OTG | `stm32n6_otg.c` | 可选 |
-| SPI | `stm32n6_spi.c` | 可选 |
-| 外部 NOR 文件系统 | MTD + `stm32n6_xspi.c` | 可挂载 |
+| 外设 | 驱动 | 设备节点 / 配置 | 状态（如实标注） |
+|------|------|------------------|------------------|
+| ADC1 / ADC2 | `stm32n6_adc.c` | `/dev/adc0`、`/dev/adc1` | 仅在 `nsh-test` 配置启用（内部 VREFINT 通道，无需外部接线）；**未接外设取过值** |
+| PWM | `stm32n6_tim.c` | `/dev/pwm0`、`/dev/pwm1` | 仅在 `nsh-test` 配置启用；**未接外设实测** |
+| 温度传感器 | `stm32n6_dts.c` | `/dev/temp0` | 仅在 `nsh-test` 配置启用（内部结温传感器）；**未做读数验证** |
+| RTC | `stm32n6_rtc.c` + lowerhalf | `/dev/rtc0` | 仅在 `nsh-test` 配置启用；**未做走时验证** |
+| HASH / 加解密 | `stm32n6_hash.c` | （无设备节点） | 仅在 `nsh-test` 配置启用；**未做算法结果验证** |
+| 低功耗定时器 | `stm32n6_lptim.c` | （可选 PWM 输出） | 仅在 `nsh-test` 配置启用；**未接外设实测** |
+| CAN / CAN FD | `stm32n6_fdcan.c` | `/dev/can0`（启用后） | **无任何配置启用；未接收发器实测** |
+| 以太网 MAC | `stm32n6_ethernet.c` | `eth0`（RMII + LAN8742 PHY） | **无任何配置启用；未接 PHY/网线实测**（`edgesight` 配置只开 NET/lwIP 协议栈，未启用 MAC 驱动） |
+| USB OTG | `stm32n6_otg.c` | （启用后注册 USB 设备控制器） | **无任何配置启用；未接 USB 实测** |
+| SPI | `stm32n6_spi.c` | `/dev/spi1`、`/dev/spi2`（启用后） | **无任何配置启用；未接从设备实测** |
+| 外部 NOR 文件系统 | MTD + `stm32n6_xspi.c` | 可挂载 | XSPI 已用作启动介质（HyperRAM 读写自检通过）；**MTD 文件系统未挂载验证** |
+
+> 上述 11 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
+> 打开对应 `CONFIG_STM32_*` 即会纳入编译（SPI / CAN / 以太网 / USB 四个驱动已按 `eye` 配置同款编译选项**逐文件编译通过**；以太网驱动有 2 条 unused-function 警告）；但**除 XSPI/启动介质外，均不属于本产品路径，也未做过实物级验证**。
+> 若需扩展到这些外设，请按 `docs/openvela-porting.md` 的流程补一次上板实测与记录。
 
 ## 端侧 AI 能力
 
@@ -116,7 +120,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | 图形栈 | LVGL 9.1（Helium 汇编加速）+ LTDC 800×480 RGB565；单 framebuffer 与摄像头互斥复用（省下 750 KB） |
 | 界面结构 | 3×2 方形按钮主页 + **6 个二级页**：眼动识别展示 / 拍照 / 系统信息 / LED 控制 / 串口命令 / 关于 |
 | 中文显示 | 自绘 4 档位图字库（48 / 32 / 24 px 界面字 + 64 px 倒计时数字），由 Noto TTF 生成，工具在 `tools/UI字体/` |
-| 眼控动作 | 闭眼进入 / 左看返回 / 右看移动 / 持续注视 0.6–1.0 s 触发；带冷却时间与"静息判决"防误触 |
+| 眼控动作 | 闭眼=确认/进入（保持 0.8 s）、左右看=移动选择（1.2 s）、二级页内左看=返回（2.0 s）；同一类别须「连续保持」才触发，触发后 0.6 s 冷却，「静息判决」（armed）防重复触发 |
 | 听觉反馈 | 蜂鸣器四音调：闭眼 784 Hz / 左 587 Hz / 右 988 Hz / 其它 660 Hz；二级页按住时连续发声 |
 | 拍照 | 闭眼进入 → 3 s 大号数字倒计时 → 全帧 800×480 BMP 存入 SD 卡，产物不带任何标注 |
 | 使用方式 | 人脸在画面内即可：系统自动定位并裁剪眼部，允许自然的头动与坐姿变化 |
@@ -205,8 +209,8 @@ rm -rf cmake_out/atk-dnn647_eye
 
 ```text
 nsh> eye_cam                 # 启动眼控界面：主页 3×2 网格
-                             #   闭眼进页 / 左看返回 / 右看移动
-                             #   二级页按住动作 0.6~1.0 s 触发
+                             #   闭眼进页（保持 0.8 s）/ 右看选中下一项（1.2 s）
+                             #   二级页内左看返回（保持 2.0 s），触发后 0.6 s 冷却
 nsh> eye_cam tone 400 500    # 蜂鸣器低音（自检）
 nsh> eye_cam tone 3000 500   # 蜂鸣器高音
 nsh> eye_cam xspi dump       # HyperRAM / XSPI 状态
@@ -239,7 +243,7 @@ nsh> eye_cam xspi dump       # HyperRAM / XSPI 状态
 | 界面显示与摄像头预览 | 分时互斥 | 只有一块 750 KB framebuffer（为内部 RAM 让路），预览与 LVGL 界面不并存 |
 | 眼动识别泛化性 | 自采数据集 | 991 张五分类数据集上 float 991/991、int8 990/991；换人 / 换光照的系统性评测未覆盖 |
 | 曝光与增益 | 参数化固定值 | 与裸机金标准一致的固定参数，未做自适应（AE / AGC） |
-| USB 主机、以太网、CAN | 驱动随端口提供 | 本产品路径未接外设实测（见「外设与驱动适配 · 随端口提供」） |
+| USB 主机、以太网、CAN | 源码随端口提供、**无配置启用** | 未接外设实测（构建接线已齐备，见「外设与驱动适配 · 随端口提供」状态列） |
 | 原厂例程覆盖 | 部分纳入 | 所需外设未接入或未适配的例程（OLED / FMC 屏 / 外接传感器 / SD-NAND / JPEG / SPDIF 等）未纳入本仓库，见「适配规模」 |
 
 ## AI Coding 日志
