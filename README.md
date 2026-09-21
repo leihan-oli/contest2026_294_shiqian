@@ -59,7 +59,10 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 
 ★ = 本项目开发或修复的驱动。
 
-### 产品路径（已上板验证）
+### 产品路径（已上板验证 —— 产品配置 `eye`）
+
+> **口径**：本节只列**产品配置 `eye`**（「从零复现」里构建、评委烧录的那一份）实际使用并已上板验证的外设；
+> 只在自检配置 `nsh-test` 启用、或尚未启用（无任何配置启用）的外设，统一列在下一节「随端口提供」，并在该节逐项标注状态。
 
 | 外设 | 接口 | 驱动 | 验证方式 |
 |------|------|------|----------|
@@ -76,9 +79,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | 蜂鸣器 | PD3（经三极管驱动） + TIM3 中断 | ★ 板级 `stm32n6_buzzer.c` | 四音调反馈，可凭音高分辨动作 |
 | 用户 LED | PG10 / PE10（active-low） | `stm32n6_userleds.c` | `/dev/userleds` |
 | 按键 | PC6 / PD1 / PG11 | `stm32n6_userbuttons.c` | `/dev/buttons` |
-| 定时器 / oneshot | TIM2 / TIM5 | `stm32n6_tim.c`、`stm32n6_oneshot.c` | `/dev/timer0`、`/dev/oneshot` |
-| 看门狗 | IWDG / WWDG | `stm32n6_iwdg.c`、`stm32n6_wwdg.c` | `/dev/watchdog0/1` |
-| 随机数 | RNG | `stm32n6_rng.c` | 端口自检 |
+| 随机数 | RNG | `stm32n6_rng.c` | 已注册 `/dev/random`（固件字符串可核对）；产品功能未使用 |
 | I2C2（摄像头控制） | I2C2 主机模式，芯片驱动内部直接使用（**不注册 `/dev` 节点**） | `stm32n6_i2c.c`、`stm32n6_imx335.c` | IMX335 寄存器读写正常（出图即证明总线可用） |
 | 缓存 / 安全域 | CACHEAXI、I-Cache / D-Cache、RIF/RISAF 授权 | ★ `stm32n6_cacheaxi.c`、`stm32n6_start.c`、`stm32n6_rcc.c` | 性能关键路径：D-Cache 生效后单帧 **2.7 s → 60 ms（45×）** |
 | 异常与复位 | HardFault/MemFault/BusFault/UsageFault 处理、复位原因 | `arm_m/*`、★ `stm32n6_fsbl_regress.c` | 崩溃可定位到函数与行，不静默重启 |
@@ -93,6 +94,8 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | RTC | `stm32n6_rtc.c` + lowerhalf | `/dev/rtc0` | 仅在 `nsh-test` 配置启用；**未做走时验证** |
 | HASH / 加解密 | `stm32n6_hash.c` | （无设备节点） | 仅在 `nsh-test` 配置启用；**未做算法结果验证** |
 | 低功耗定时器 | `stm32n6_lptim.c` | （可选 PWM 输出） | 仅在 `nsh-test` 配置启用；**未接外设实测** |
+| 定时器 / oneshot | `stm32n6_tim.c`、`stm32n6_oneshot.c` | `/dev/timer0`、`/dev/oneshot` | 仅在 `nsh-test` 配置启用（TIM2 / TIM5）；**产品配置 `eye` 未启用；未做计时精度验证** |
+| 看门狗 | `stm32n6_iwdg.c`、`stm32n6_wwdg.c` | `/dev/watchdog0/1` | 仅在 `nsh-test` 配置启用；**产品配置 `eye` 未启用；未做喂狗/复位验证** |
 | CAN / CAN FD | `stm32n6_fdcan.c` | `/dev/can0`（启用后） | **无任何配置启用；未接收发器实测** |
 | 以太网 MAC | `stm32n6_ethernet.c` | `eth0`（RMII + LAN8742 PHY） | **无任何配置启用；未接 PHY/网线实测**（`edgesight` 配置只开 NET/lwIP 协议栈，未启用 MAC 驱动） |
 | USB OTG | `stm32n6_otg.c` | （启用后注册 USB 设备控制器） | **无任何配置启用；未接 USB 实测** |
@@ -100,7 +103,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | I2C4（板载光感 AP3216C 总线） | `stm32n6_i2c.c` | `/dev/i2c4` | 仅在 `nsh-test` 配置启用（`CONFIG_STM32_I2C4`）；**未接器件实测** |
 | 外部 NOR 文件系统 | MTD + `stm32n6_xspi.c` | 可挂载 | XSPI 已用作启动介质（HyperRAM 读写自检通过）；**MTD 文件系统未挂载验证** |
 
-> 上述 12 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
+> 上述 14 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
 > 打开对应 `CONFIG_STM32_*` 即会纳入编译（SPI / CAN / 以太网 / USB 四个驱动已按 `eye` 配置同款编译选项**逐文件编译通过**；以太网驱动有 2 条 unused-function 警告）；但**除 XSPI/启动介质外，均不属于本产品路径，也未做过实物级验证**。
 > 若需扩展到这些外设，请按 `docs/openvela-porting.md` 的流程补一次上板实测与记录。
 >
