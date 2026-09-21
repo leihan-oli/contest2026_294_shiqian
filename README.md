@@ -50,7 +50,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | **芯片层驱动** | **43 个源文件 / 36,732 行**（`arch/arm/stm32n6/`），其中 ATON、DCMIPP、IMX335、LTDC/LCD、GT911、CACHEAXI、GPDMA 扩展、XSPI 等为本项目开发或修复 |
 | **板级支持** | 11 个源文件 / 2,632 行，**8 个板级配置**（产品 `eye`；NPU 分阶段 `npu` / `npu-cam` / `npu-o0`；端口自检 `nsh` / `nsh-test` / `nsh-qemu`；边缘计算历史配置 `edgesight`） |
 | **应用层** | **12 个 openvela 应用 / 12,170 行**（`apps/examples/`）：眼控主应用（含自绘 4 档位图字库）+ 11 个移植与调试工具（取帧 / 存图 / NPU 探针 / FSBL 自检 / 显示 / 视频 / 成像调试） |
-| **设备节点** | **17+ 个**：`/dev/aie0`(NPU)、`/dev/lcd0`、`/dev/fb0`、`/dev/input0`、`/dev/mmcsd0`、`/dev/userleds`、`/dev/buttons`、`/dev/timer0–5`、`/dev/oneshot`、`/dev/watchdog0/1`、`/dev/adc0/1`、`/dev/pwm0/1`、`/dev/temp0`、`/dev/cap0`、`/dev/i2c2`、`/dev/i2c4` |
+| **设备节点** | 产品配置 `eye`（固件实测，见 `firmware/images/nuttx.bin` 内的路径字符串）：`/dev/aie0`(NPU)、`/dev/lcd0`、`/dev/fb0`、`/dev/video0`、`/dev/input0`、`/dev/mmcsd0`、`/dev/userleds`、`/dev/buttons`、`/dev/ttyS0`(console)；测试配置 `nsh-test` 另有 `/dev/timer0–5`、`/dev/oneshot`、`/dev/pwm0/1`、`/dev/cap0`、`/dev/adc0/1`、`/dev/temp0`、`/dev/watchdog0/1`、`/dev/gpio1/2`、`/dev/i2c4` |
 | **核心树改动** | **13 个文件 / 4 个仓**：nuttx（Kconfig 挂接、fault 处理、cache、ATON 头）、apps（speexdsp、lvgldemo）、vendor/openvela（board hook 改 weak）、LVGL（MVE 编译门控）；补丁 + `core-tree-overlay/` 双通道交付，`scripts/verify-core-tree.sh` 离线自证三者一致 |
 | **原厂例程对照** | 原厂 **66 个裸机例程工程**（`01_LED` … `99_Applications/995_AI_Hand_Landmarks`）；本项目把与产品相关的初始化序列逐一移植进 NuttX：`15_RGBLCD`（LTDC 时序/引脚）、`38_SD_Card` / `39_FatFs`（SDMMC1 + FAT32 读写，拍照落盘）、`995_AI_Hand_Landmarks`（NPU/ATON 移植路径）、`01_LED`（板级点亮）、`40_Chinese_Show` 与官方 FSBL（XSPI1/HyperRAM 配置金标准），并全部上板验证。按“所需外设是否已在端口内适配”逐项对照，**当前板级配置已支持跑通 41/66 个例程**（板上外设 + LTDC/DMA2D + NPU + FPU/DSP/RTOS 等能力；其中触摸与 NPU 相关例程为同能力覆盖并已实测：`11_TPAD`、`27_Touch`、`991–995_AI_*`），另有 **7 个**例程所需的 FDCAN、USB 主机/设备与以太网控制器驱动**源码**已随端口提供（源码 + Kconfig + 构建接线齐备，但**无配置启用、未实测**，见下表「随端口提供」的状态列）；受**固件窗口**限制（FSBL 单次载入 1 MiB + 内部 RAM 2 MiB），未把全部例程代码纳入本仓库 |
 | **系统能力** | NSH shell、procfs / tmpfs、FAT32 + SD 卡、LVGL 9.1 图形栈、ATON NPU 运行时、V4L2 风格取帧、多路定时器 / oneshot / 看门狗 / ADC / PWM / RTC / HASH |
@@ -79,7 +79,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | 定时器 / oneshot | TIM2 / TIM5 | `stm32n6_tim.c`、`stm32n6_oneshot.c` | `/dev/timer0`、`/dev/oneshot` |
 | 看门狗 | IWDG / WWDG | `stm32n6_iwdg.c`、`stm32n6_wwdg.c` | `/dev/watchdog0/1` |
 | 随机数 | RNG | `stm32n6_rng.c` | 端口自检 |
-| I2C | I2C2（摄像头控制）/ I2C4（光感 AP3216C） | `stm32n6_i2c.c` | `/dev/i2c2`、`/dev/i2c4` |
+| I2C2（摄像头控制） | I2C2 主机模式，芯片驱动内部直接使用（**不注册 `/dev` 节点**） | `stm32n6_i2c.c`、`stm32n6_imx335.c` | IMX335 寄存器读写正常（出图即证明总线可用） |
 | 缓存 / 安全域 | CACHEAXI、I-Cache / D-Cache、RIF/RISAF 授权 | ★ `stm32n6_cacheaxi.c`、`stm32n6_start.c`、`stm32n6_rcc.c` | 性能关键路径：D-Cache 生效后单帧 **2.7 s → 60 ms（45×）** |
 | 异常与复位 | HardFault/MemFault/BusFault/UsageFault 处理、复位原因 | `arm_m/*`、★ `stm32n6_fsbl_regress.c` | 崩溃可定位到函数与行，不静默重启 |
 
@@ -97,9 +97,10 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | 以太网 MAC | `stm32n6_ethernet.c` | `eth0`（RMII + LAN8742 PHY） | **无任何配置启用；未接 PHY/网线实测**（`edgesight` 配置只开 NET/lwIP 协议栈，未启用 MAC 驱动） |
 | USB OTG | `stm32n6_otg.c` | （启用后注册 USB 设备控制器） | **无任何配置启用；未接 USB 实测** |
 | SPI | `stm32n6_spi.c` | `/dev/spi1`、`/dev/spi2`（启用后） | **无任何配置启用；未接从设备实测** |
+| I2C4（板载光感 AP3216C 总线） | `stm32n6_i2c.c` | `/dev/i2c4` | 仅在 `nsh-test` 配置启用（`CONFIG_STM32_I2C4`）；**未接器件实测** |
 | 外部 NOR 文件系统 | MTD + `stm32n6_xspi.c` | 可挂载 | XSPI 已用作启动介质（HyperRAM 读写自检通过）；**MTD 文件系统未挂载验证** |
 
-> 上述 11 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
+> 上述 12 项的驱动源码、Kconfig 与构建接线（`Make.defs` + `CMakeLists.txt`）均已随端口交付：
 > 打开对应 `CONFIG_STM32_*` 即会纳入编译（SPI / CAN / 以太网 / USB 四个驱动已按 `eye` 配置同款编译选项**逐文件编译通过**；以太网驱动有 2 条 unused-function 警告）；但**除 XSPI/启动介质外，均不属于本产品路径，也未做过实物级验证**。
 > 若需扩展到这些外设，请按 `docs/openvela-porting.md` 的流程补一次上板实测与记录。
 >
