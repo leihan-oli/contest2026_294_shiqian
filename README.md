@@ -53,7 +53,7 @@ NPU 眼动五分类（64×128）→ LVGL 界面动作 → 外设控制 + 蜂鸣�
 | **设备节点** | 产品配置 `eye`（固件实测，见 `firmware/images/nuttx.bin` 内的路径字符串）：`/dev/aie0`(NPU)、`/dev/lcd0`、`/dev/fb0`、`/dev/video0`、`/dev/input0`、`/dev/mmcsd0`、`/dev/userleds`、`/dev/buttons`、`/dev/ttyS0`(console)；测试配置 `nsh-test` 另有 `/dev/timer0–5`、`/dev/oneshot`、`/dev/pwm0/1`、`/dev/cap0`、`/dev/adc0/1`、`/dev/temp0`、`/dev/watchdog0/1`、`/dev/gpio1/2`、`/dev/i2c4` |
 | **核心树改动** | **13 个文件 / 4 个仓**：nuttx（Kconfig 挂接、fault 处理、cache、ATON 头）、apps（speexdsp、lvgldemo）、vendor/openvela（board hook 改 weak）、LVGL（MVE 编译门控）；补丁 + `core-tree-overlay/` 双通道交付，`scripts/verify-core-tree.sh` 离线自证三者一致 |
 | **原厂例程对照** | 原厂 **66 个裸机例程工程**（`01_LED` … `99_Applications/995_AI_Hand_Landmarks`）；本项目把与产品相关的初始化序列逐一移植进 NuttX：`15_RGBLCD`（LTDC 时序/引脚）、`38_SD_Card` / `39_FatFs`（SDMMC1 + FAT32 读写，拍照落盘）、`995_AI_Hand_Landmarks`（NPU/ATON 移植路径）、`01_LED`（板级点亮）、`40_Chinese_Show` 与官方 FSBL（XSPI1/HyperRAM 配置金标准），并全部上板验证。按“所需外设是否已在端口内适配”逐项对照，**当前板级配置已支持跑通 41/66 个例程**（板上外设 + LTDC/DMA2D + NPU + FPU/DSP/RTOS 等能力；其中触摸与 NPU 相关例程为同能力覆盖并已实测：`11_TPAD`、`27_Touch`、`991–995_AI_*`），另有 **7 个**例程所需的 FDCAN、USB 主机/设备与以太网控制器驱动**源码**已随端口提供（源码 + Kconfig + 构建接线齐备，但**无配置启用、未实测**，见下表「随端口提供」的状态列）；受**固件窗口**限制（FSBL 单次载入 1 MiB + 内部 RAM 2 MiB），未把全部例程代码纳入本仓库 |
-| **系统能力** | NSH shell、procfs / tmpfs、FAT32 + SD 卡、LVGL 9.1 图形栈、ATON NPU 运行时、V4L2 风格取帧、多路定时器 / oneshot / 看门狗 / ADC / PWM / RTC / HASH |
+| **系统能力** | 产品配置 `eye`：NSH shell、procfs / tmpfs、FAT32 + SD 卡（`CONFIG_FS_FAT`）、LVGL 9.1 图形栈、ATON NPU 运行时、V4L2 风格取帧；其他配置（`nsh-test` 等）另有：多路定时器 / oneshot / 看门狗、ADC / PWM / RTC / HASH（见「随端口提供」） |
 
 ## 外设与驱动适配
 
